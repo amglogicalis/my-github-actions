@@ -2,6 +2,23 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
+// =============================================================================
+// PASO 1: Cadena de Fallback de Modelos con Backoff Exponencial
+// -----------------------------------------------------------------------------
+// Orden de preferencia: Principal → Fallback 1 → Fallback 2 → Fallback 3
+// Si un modelo devuelve 429 (cuota) se espera un delay creciente antes del
+// siguiente. Si devuelve 5xx (servidor) se pasa al siguiente de inmediato.
+// =============================================================================
+const GEMINI_MODEL_CHAIN = [
+  'gemini-2.5-flash',       // Principal  — contexto grande, óptimo para código
+  'gemini-flash-lite-latest', // Fallback 1 — ultraligero, alta disponibilidad
+  'gemini-3.1-flash-lite',  // Fallback 2 — versión actualizada del modelo ligero
+  'gemma-4-31b-it'          // Fallback 3 — modelo instructivo abierto, último recurso
+];
+
+// Backoff base en ms para errores 429 (se duplica en cada reintento)
+const BACKOFF_BASE_MS = 2000;
+
 // Default exclusions
 const IGNORED_EXTENSIONS = new Set([
   // Images
@@ -56,6 +73,7 @@ function parseArgs() {
     } else if ((arg === '--exclude' || arg === '-e') && i + 1 < process.argv.length) {
       args.exclude = process.argv[++i];
     }
+    // Note: --model / -d intentionally removed. Zenon selects models automatically.
   }
   return args;
 }
@@ -156,24 +174,20 @@ function filterFiles(fileList, userExcludes) {
   });
 }
 
-async function callGemini(apiKey, model, mode, systemInstruction, prompt) {
-  const apiBase = process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com';
-  const url = `${apiBase}/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  
-  const requestBody = {
-    systemInstruction: {
-      parts: [{ text: systemInstruction }]
-    },
-    contents: [
-      {
-        parts: [{ text: prompt }]
-      }
-    ]
+// Async sleep helper (used for exponential backoff on 429 errors)
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Build the Gemini request body for a given mode
+function buildRequestBody(mode, systemInstruction, prompt) {
+  const body = {
+    systemInstruction: { parts: [{ text: systemInstruction }] },
+    contents: [{ parts: [{ text: prompt }] }]
   };
 
-  const isCorrectMode = mode.toLowerCase() === 'correct';
-  if (isCorrectMode) {
-    requestBody.generationConfig = {
+  if (mode.toLowerCase() === 'correct') {
+    body.generationConfig = {
       responseMimeType: 'application/json',
       responseSchema: {
         type: 'OBJECT',
@@ -206,17 +220,26 @@ async function callGemini(apiKey, model, mode, systemInstruction, prompt) {
     };
   }
 
+  return body;
+}
+
+// Single model call — throws with statusCode property on HTTP errors
+async function callGeminiModel(apiKey, model, mode, systemInstruction, prompt) {
+  const apiBase = process.env.GEMINI_API_BASE_URL || 'https://generativelanguage.googleapis.com';
+  const url = `${apiBase}/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const requestBody = buildRequestBody(mode, systemInstruction, prompt);
+
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody)
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Zenon AI engine error (${response.status}): ${errText}`);
+    const err = new Error(`Zenon AI engine error (${response.status}): ${errText}`);
+    err.statusCode = response.status;
+    throw err;
   }
 
   const data = await response.json();
@@ -230,6 +253,61 @@ async function callGemini(apiKey, model, mode, systemInstruction, prompt) {
   }
 
   return candidate.content.parts[0].text;
+}
+
+// =============================================================================
+// PASO 1: Fallback Chain with Exponential Backoff
+// Tries each model in GEMINI_MODEL_CHAIN in order.
+//   - 429 (quota exceeded)  → wait BACKOFF_BASE_MS * 2^attempt, then next model
+//   - 5xx (server error)    → next model immediately
+//   - Other errors          → next model immediately
+// =============================================================================
+async function callWithFallback(apiKey, mode, systemInstruction, prompt) {
+  let lastError;
+
+  for (let i = 0; i < GEMINI_MODEL_CHAIN.length; i++) {
+    const model = GEMINI_MODEL_CHAIN[i];
+    const isLastModel = i === GEMINI_MODEL_CHAIN.length - 1;
+
+    try {
+      if (i > 0) {
+        console.log(`  ↳ Trying fallback model [${i}/${GEMINI_MODEL_CHAIN.length - 1}]: ${model}`);
+      } else {
+        console.log(`  Using primary model: ${model}`);
+      }
+
+      const result = await callGeminiModel(apiKey, model, mode, systemInstruction, prompt);
+      if (i > 0) {
+        console.log(`  ✅ Fallback succeeded with model: ${model}`);
+      }
+      return result;
+
+    } catch (err) {
+      lastError = err;
+      const statusCode = err.statusCode || 0;
+
+      if (isLastModel) {
+        // All models exhausted
+        console.error(`  ❌ All models in the fallback chain failed.`);
+        break;
+      }
+
+      if (statusCode === 429) {
+        // Rate-limited: exponential backoff before trying next model
+        const delayMs = BACKOFF_BASE_MS * Math.pow(2, i);
+        console.warn(`  ⚠️  Model "${model}" hit rate limit (429). Waiting ${delayMs / 1000}s before next fallback...`);
+        await sleep(delayMs);
+      } else if (statusCode >= 500) {
+        // Server error: switch immediately
+        console.warn(`  ⚠️  Model "${model}" returned server error (${statusCode}). Switching to next fallback immediately...`);
+      } else {
+        // Other errors (404, auth, etc.): switch immediately
+        console.warn(`  ⚠️  Model "${model}" failed (${statusCode || 'network error'}). Switching to next fallback...`);
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 // Send PR comment on GitHub
@@ -324,10 +402,7 @@ async function main() {
   const exclude = cliArgs.exclude || process.env.INPUT_EXCLUDE || '';
   const githubToken = process.env.INPUT_GITHUB_TOKEN || process.env.GITHUB_TOKEN;
   const isCI = !!process.env.GITHUB_ACTIONS;
-
-  // gemini-2.5-flash is the current free-tier model for both modes.
-  // It handles both fast analysis and precise code rewriting well.
-  const model = 'gemini-2.5-flash';
+  // Model selection is automatic via GEMINI_MODEL_CHAIN — no user config needed.
 
   // --- Startup diagnostics (visible in CI logs) ---
   console.log('=== Zenon startup ===');
@@ -397,9 +472,9 @@ async function main() {
   const userPrompt = `Here is the codebase files:\n  \n${codebasePayload}\n\nAnalyze these files and perform the requested actions for mode: ${mode.toUpperCase()}.\n${isCorrectMode ? 'Return the files schema JSON.' : 'Return the Markdown code review report.'}`;
 
   console.log('Zenon is analyzing your codebase...');
-  
+
   try {
-    const rawResponse = await callGemini(apiKey, model, mode, systemInstruction, userPrompt);
+    const rawResponse = await callWithFallback(apiKey, mode, systemInstruction, userPrompt);
     console.log('Analysis complete.');
 
     if (isCorrectMode) {

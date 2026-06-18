@@ -646,10 +646,10 @@ async function callWithFallback(chain, mode, systemInstruction, prompt, enableGr
           await sleep(delayMs);
         } else if (statusCode >= 500) {
           // Server error: switch immediately
-          console.warn(`  ⚠️  Modelo "${modelLabel}" falló con error de servidor (${statusCode}). Cambiando al siguiente de inmediato...`);
+          console.warn(`  ⚠️  Modelo "${modelLabel}" falló con error de servidor (${statusCode}). Detalle: ${err.message}. Cambiando al siguiente de inmediato...`);
         } else {
           // Other errors: switch immediately
-          console.warn(`  ⚠️  Modelo "${modelLabel}" falló (${statusCode || 'error de red'}). Cambiando al siguiente...`);
+          console.warn(`  ⚠️  Modelo "${modelLabel}" falló (${statusCode || 'error de red'}). Detalle: ${err.message}. Cambiando al siguiente...`);
         }
       }
   }

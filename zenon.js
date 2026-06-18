@@ -53,8 +53,6 @@ function parseArgs() {
     const arg = process.argv[i];
     if ((arg === '--mode' || arg === '-m') && i + 1 < process.argv.length) {
       args.mode = process.argv[++i];
-    } else if ((arg === '--model' || arg === '-d') && i + 1 < process.argv.length) {
-      args.model = process.argv[++i];
     } else if ((arg === '--exclude' || arg === '-e') && i + 1 < process.argv.length) {
       args.exclude = process.argv[++i];
     }
@@ -71,7 +69,8 @@ function traverseDirectory(dir, fileList) {
     if (stat.isDirectory()) {
       const relativePath = path.relative('.', fullPath);
       const parts = relativePath.split(/[/\\]/);
-      if (parts.some(part => IGNORED_DIRS.has(part) || part.startsWith('.'))) {
+      // Ensure that actual ignored directories are skipped, not just any part that starts with '.'
+      if (parts.some(part => IGNORED_DIRS.has(part))) {
         continue;
       }
       traverseDirectory(fullPath, fileList);
@@ -110,7 +109,8 @@ function filterFiles(fileList, userExcludes) {
     const parts = normFile.split('/');
     
     // Skip ignored directories (e.g. node_modules, .git)
-    if (parts.some(part => IGNORED_DIRS.has(part) || (part.startsWith('.') && part !== '.' && part !== '..'))) {
+    // This check is refined to only skip explicit IGNORED_DIRS, not all directories starting with '.'
+    if (parts.some(part => IGNORED_DIRS.has(part))) {
       return false;
     }
 
@@ -388,35 +388,13 @@ async function main() {
   // Prompt logic
   const isCorrectMode = mode === 'correct';
   
-  const systemInstruction = `You are "Zenon", a highly capable AI assistant for code analysis and review.
-You analyze the user's project files, find bugs, vulnerabilities, performance regressions, syntax errors, and architectural flaws, and resolve them.
-You must adapt your output to the requested mode:
-
-${isCorrectMode ? 
-  `MODE: CORRECT
-  Analyze the codebase, detect bugs, poor patterns, syntax errors, or logical mistakes.
-  Provide corrected versions of the files.
-  You MUST return a JSON object listing files that need corrections.
-  Always return the FULL file content in the 'content' field. Do not truncate the code, do not add comments like '// ... rest of the file stays same'. You must provide a clean drop-in replacement.
-  Do not include files that do not need changes.`
+  const systemInstruction = `You are "Zenon", a highly capable AI assistant for code analysis and review.\nYou analyze the user's project files, find bugs, vulnerabilities, performance regressions, syntax errors, and architectural flaws, and resolve them.\nYou must adapt your output to the requested mode:\n\n${isCorrectMode ? 
+  `MODE: CORRECT\n  Analyze the codebase, detect bugs, poor patterns, syntax errors, or logical mistakes.\n  Provide corrected versions of the files.\n  You MUST return a JSON object listing files that need corrections.\n  Always return the FULL file content in the 'content' field. Do not truncate the code, do not add comments like '// ... rest of the file stays same'. You must provide a clean drop-in replacement.\n  Do not include files that do not need changes.`
   : 
-  `MODE: ASSIST
-  Analyze the codebase, detect bugs, security issues, performance bottlenecks, and design/cleanliness issues.
-  Generate a helpful and detailed Markdown report with your findings.
-  Use clear sections:
-  - 🛠️ Bugs and Functional Issues
-  - 🔒 Security Vulnerabilities
-  - ⚡ Performance Improvements
-  - 🧼 Code Cleanliness and Best Practices
-  For each recommendation, give a clear explanation and code snippets indicating how to apply it.`
+  `MODE: ASSIST\n  Analyze the codebase, detect bugs, security issues, performance bottlenecks, and design/cleanliness issues.\n  Generate a helpful and detailed Markdown report with your findings.\n  Use clear sections:\n  - 🛠️ Bugs and Functional Issues\n  - 🔒 Security Vulnerabilities\n  - ⚡ Performance Improvements\n  - 🧼 Code Cleanliness and Best Practices\n  For each recommendation, give a clear explanation and code snippets indicating how to apply it.`
 }`;
 
-  const userPrompt = `Here is the codebase files:
-  
-${codebasePayload}
-
-Analyze these files and perform the requested actions for mode: ${mode.toUpperCase()}.
-${isCorrectMode ? 'Return the files schema JSON.' : 'Return the Markdown code review report.'}`;
+  const userPrompt = `Here is the codebase files:\n  \n${codebasePayload}\n\nAnalyze these files and perform the requested actions for mode: ${mode.toUpperCase()}.\n${isCorrectMode ? 'Return the files schema JSON.' : 'Return the Markdown code review report.'}`;
 
   console.log('Zenon is analyzing your codebase...');
   

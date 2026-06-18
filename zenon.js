@@ -64,7 +64,8 @@ const PROVIDERS = {
   cohere: {
     keyName: 'COHERE_API_KEY',
     models: [
-      'command-r-plus'           // Alta capacidad multilingüe y de síntesis
+      'command-a-plus',          // Flagship actual para agentes y código
+      'command'                  // Clásico multipropósito ultra-estable de Cohere
     ]
   },
   openrouter: {
@@ -140,12 +141,14 @@ function buildExecutionChain(keys, stackInfo, totalSize) {
     // Si el repositorio es grande, priorizamos Gemini y Cohere. Excluimos Groq por completo
     // ya que su gateway HTTP rechazará prompts grandes con 413 (límite físico de 4MB o tokens).
     addModel('gemini', 'gemini-2.5-flash');
-    addModel('cohere', 'command-r-plus');
+    addModel('cohere', 'command-a-plus');
+    addModel('cohere', 'command');
   } else if (isMediumRepo) {
     // Si el repositorio es mediano (30 KB - 150 KB), priorizamos Gemini y Cohere.
     // Relegamos Groq al final porque su cuota de TPM en cuentas gratuitas (12.000 tokens) es muy baja.
     addModel('gemini', 'gemini-2.5-flash');
-    addModel('cohere', 'command-r-plus');
+    addModel('cohere', 'command-a-plus');
+    addModel('cohere', 'command');
   } else if (stackInfo.dominant === 'python' || stackInfo.dominant === 'go') {
     // Para repos pequeños de Python y Go
     addModel('groq', 'llama-3.3-70b-versatile');
@@ -164,7 +167,8 @@ function buildExecutionChain(keys, stackInfo, totalSize) {
     addModel('groq', 'mixtral-8x7b-32768');
   }
   
-  addModel('cohere', 'command-r-plus');
+  addModel('cohere', 'command-a-plus');
+  addModel('cohere', 'command');
   addModel('gemini', 'gemini-3.1-flash-lite');
   
   if (!isLargeRepo) {
@@ -560,6 +564,13 @@ async function callWithFallback(chain, mode, systemInstruction, prompt, enableGr
         lastError = err;
         const statusCode = err.statusCode || 0;
         const isPayloadTooLarge = statusCode === 413 || 
+                                  (statusCode === 400 && (
+                                    err.message.toLowerCase().includes('context') ||
+                                    err.message.toLowerCase().includes('token') ||
+                                    err.message.toLowerCase().includes('limit') ||
+                                    err.message.toLowerCase().includes('length') ||
+                                    err.message.toLowerCase().includes('too large')
+                                  )) ||
                                   err.message.toLowerCase().includes('too large') || 
                                   err.message.toLowerCase().includes('context_length_exceeded');
 

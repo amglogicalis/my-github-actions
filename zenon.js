@@ -326,9 +326,9 @@ async function main() {
   const isCI = !!process.env.GITHUB_ACTIONS;
 
   // Auto-select the best model for each task (no user input needed)
-  // Assist: lighter & faster model — ideal for reading and explaining code
-  // Correct: smarter model — better reasoning for rewriting and fixing code
-  const model = mode === 'correct' ? 'gemini-2.5-flash' : 'gemini-1.5-flash';
+  // Assist: fast & free — ideal for reading and explaining code
+  // Correct: smarter & free — better reasoning for rewriting and fixing code
+  const model = mode === 'correct' ? 'gemini-2.5-flash' : 'gemini-2.0-flash';
 
   // --- Startup diagnostics (visible in CI logs) ---
   console.log('=== Zenon startup ===');

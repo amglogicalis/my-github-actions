@@ -45,7 +45,6 @@ jobs:
         with:
           zenon-api-key: ${{ secrets.ZENON_API_KEY }}
           groq-api-key: ${{ secrets.GROQ_API_KEY }}
-          deepseek-api-key: ${{ secrets.DEEPSEEK_API_KEY }}
           cohere-api-key: ${{ secrets.COHERE_API_KEY }}
           openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
           mode: ${{ github.event.inputs.mode || 'assist' }}

@@ -14,10 +14,6 @@ inputs:
     description: 'Groq API Key (optional - configure as a repository secret)'
     required: false
     default: ''
-  deepseek-api-key:
-    description: 'DeepSeek API Key (optional - configure as a repository secret)'
-    required: false
-    default: ''
   cohere-api-key:
     description: 'Cohere API Key (optional - configure as a repository secret)'
     required: false
@@ -56,7 +52,6 @@ runs:
         echo "Mode         : $INPUT_MODE"
         echo "Gemini Key   : $([ -n "$INPUT_ZENON_API_KEY" ] && echo 'set ✅' || echo 'not set ❌')"
         echo "Groq Key     : $([ -n "$INPUT_GROQ_API_KEY" ] && echo 'set ✅' || echo 'not set ❌')"
-        echo "DeepSeek Key : $([ -n "$INPUT_DEEPSEEK_API_KEY" ] && echo 'set ✅' || echo 'not set ❌')"
         echo "Cohere Key   : $([ -n "$INPUT_COHERE_API_KEY" ] && echo 'set ✅' || echo 'not set ❌')"
         echo "OpenRouter   : $([ -n "$INPUT_OPENROUTER_API_KEY" ] && echo 'set ✅' || echo 'not set ❌')"
         if [ "$INPUT_MODE" = "objective" ]; then
@@ -66,7 +61,6 @@ runs:
       env:
         INPUT_ZENON_API_KEY: ${{ inputs.zenon-api-key }}
         INPUT_GROQ_API_KEY: ${{ inputs.groq-api-key }}
-        INPUT_DEEPSEEK_API_KEY: ${{ inputs.deepseek-api-key }}
         INPUT_COHERE_API_KEY: ${{ inputs.cohere-api-key }}
         INPUT_OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
         INPUT_MODE: ${{ inputs.mode }}
@@ -77,7 +71,6 @@ runs:
       env:
         INPUT_ZENON_API_KEY: ${{ inputs.zenon-api-key }}
         INPUT_GROQ_API_KEY: ${{ inputs.groq-api-key }}
-        INPUT_DEEPSEEK_API_KEY: ${{ inputs.deepseek-api-key }}
         INPUT_COHERE_API_KEY: ${{ inputs.cohere-api-key }}
         INPUT_OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
         INPUT_MODE: ${{ inputs.mode }}

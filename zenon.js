@@ -61,12 +61,6 @@ const PROVIDERS = {
       'mixtral-8x7b-32768'       // Buen fallback para tareas estructuradas
     ]
   },
-  deepseek: {
-    keyName: 'DEEPSEEK_API_KEY',
-    models: [
-      'deepseek-chat'            // DeepSeek V3/R1 chat completions
-    ]
-  },
   cohere: {
     keyName: 'COHERE_API_KEY',
     models: [
@@ -89,7 +83,6 @@ function getAvailableKeys(cliArgs) {
   return {
     gemini: cliArgs.zenonApiKey || process.env.INPUT_ZENON_API_KEY || process.env.ZENON_API_KEY || process.env.GEMINI_API_KEY,
     groq: cliArgs.groqApiKey || process.env.INPUT_GROQ_API_KEY || process.env.GROQ_API_KEY,
-    deepseek: cliArgs.deepseekApiKey || process.env.INPUT_DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY,
     cohere: cliArgs.cohereApiKey || process.env.INPUT_COHERE_API_KEY || process.env.COHERE_API_KEY,
     openrouter: cliArgs.openrouterApiKey || process.env.INPUT_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY
   };
@@ -148,23 +141,19 @@ function buildExecutionChain(keys, stackInfo, totalSize) {
     // ya que su gateway HTTP rechazará prompts grandes con 413 (límite físico de 4MB o tokens).
     addModel('gemini', 'gemini-2.5-flash');
     addModel('cohere', 'command-r-plus');
-    addModel('deepseek', 'deepseek-chat');
   } else if (isMediumRepo) {
-    // Si el repositorio es mediano (30 KB - 150 KB), priorizamos Gemini, Cohere y DeepSeek.
+    // Si el repositorio es mediano (30 KB - 150 KB), priorizamos Gemini y Cohere.
     // Relegamos Groq al final porque su cuota de TPM en cuentas gratuitas (12.000 tokens) es muy baja.
     addModel('gemini', 'gemini-2.5-flash');
-    addModel('deepseek', 'deepseek-chat');
     addModel('cohere', 'command-r-plus');
   } else if (stackInfo.dominant === 'python' || stackInfo.dominant === 'go') {
     // Para repos pequeños de Python y Go
-    addModel('deepseek', 'deepseek-chat');
     addModel('groq', 'llama-3.3-70b-versatile');
     addModel('gemini', 'gemini-2.5-flash');
   } else {
     // Por defecto para repos pequeños
     addModel('gemini', 'gemini-2.5-flash');
     addModel('groq', 'llama-3.3-70b-versatile');
-    addModel('deepseek', 'deepseek-chat');
   }
 
   // 2. Capas de respaldo secundarias para garantizar 100% de tolerancia a fallos
@@ -487,12 +476,10 @@ async function callProviderModel(entry, mode, systemInstruction, prompt, enableG
     throw new Error('Cohere V2 API returned an empty or invalid message content.');
   }
 
-  // 3. Proveedores compatibles con formato OpenAI (Groq, DeepSeek, OpenRouter)
+  // 3. Proveedores compatibles con formato OpenAI (Groq, OpenRouter)
   let apiBase = '';
   if (provider === 'groq') {
     apiBase = 'https://api.groq.com/openai/v1';
-  } else if (provider === 'deepseek') {
-    apiBase = 'https://api.deepseek.com/v1';
   } else if (provider === 'openrouter') {
     apiBase = 'https://openrouter.ai/api/v1';
   }
@@ -546,7 +533,7 @@ async function callProviderModel(entry, mode, systemInstruction, prompt, enableG
 // =============================================================================
 async function callWithFallback(chain, mode, systemInstruction, prompt, enableGrounding = false) {
   if (chain.length === 0) {
-    throw new Error('No API keys configured. Please configure at least one of: ZENON_API_KEY, GROQ_API_KEY, DEEPSEEK_API_KEY, COHERE_API_KEY, OPENROUTER_API_KEY.');
+    throw new Error('No API keys configured. Please configure at least one of: ZENON_API_KEY, GROQ_API_KEY, COHERE_API_KEY, OPENROUTER_API_KEY.');
   }
 
   let lastError;
@@ -590,8 +577,9 @@ async function callWithFallback(chain, mode, systemInstruction, prompt, enableGr
             }
           }
         } else if (statusCode === 429) {
-          // Rate-limited: wait, then try next fallback
-          const delayMs = BACKOFF_BASE_MS * Math.pow(2, i);
+          // Rate-limited: wait a short constant time to clear RPM slot, then try next fallback
+          // Since the next model is on a different provider/quota, we do not scale wait times globally
+          const delayMs = BACKOFF_BASE_MS; // Constant 2s wait
           console.warn(`  ⚠️  Modelo "${modelLabel}" superó límite de cuota (429). Esperando ${delayMs / 1000}s antes de reintentar...`);
           await sleep(delayMs);
         } else if (statusCode >= 500) {

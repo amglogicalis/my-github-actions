@@ -1,0 +1,48 @@
+name: Zenon AI Assistant Self-Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Operation Mode: "assist" to analyze and suggest, or "correct" to automatically fix code.'
+        required: true
+        default: 'assist'
+        type: choice
+        options:
+          - assist
+          - correct
+      model:
+        description: 'Gemini model to use'
+        required: false
+        default: 'gemini-1.5-flash'
+        type: string
+
+jobs:
+  zenon:
+    name: Run Zenon AI
+    runs-on: ubuntu-latest
+    
+    # Required permissions for Zenon to comment on PRs and commit/push modifications
+    permissions:
+      contents: write
+      pull-requests: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history in case git needs history for diffs
+          fetch-depth: 0
+
+      - name: Run Zenon AI Assistant
+        uses: ./ # References the local action defined in action.yml of this repo
+        with:
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          mode: ${{ github.event.inputs.mode || 'assist' }}
+          model: ${{ github.event.inputs.model || 'gemini-1.5-flash' }}

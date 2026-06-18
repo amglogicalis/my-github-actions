@@ -1,0 +1,31 @@
+name: 'Zenon AI Assistant'
+description: 'Zenon is a free AI assistant that analyzes your repository for bugs/improvements or automatically applies corrections.'
+author: 'amglogicalis'
+branding:
+  icon: 'cpu'
+  color: 'purple'
+
+inputs:
+  gemini-api-key:
+    description: 'Gemini API Key from Google AI Studio'
+    required: true
+  mode:
+    description: 'Operating mode: "assist" (analyses code & suggests improvements) or "correct" (directly modifies files & commits)'
+    required: false
+    default: 'assist'
+  github-token:
+    description: 'GitHub Token for posting PR comments and pushing code changes (defaults to github.token)'
+    required: false
+    default: '${{ github.token }}'
+  model:
+    description: 'Gemini model to use (e.g. gemini-1.5-flash, gemini-2.5-flash)'
+    required: false
+    default: 'gemini-1.5-flash'
+  exclude:
+    description: 'Comma-separated list of file names or paths to exclude from analysis'
+    required: false
+    default: ''
+
+runs:
+  using: 'node20'
+  main: 'zenon.js'

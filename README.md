@@ -1,31 +1,71 @@
-# 🤖 Zenon AI Assistant
+<p align="center">
+  <img src="logo.png" alt="Zenon Logo" width="180" />
+</p>
 
-**Zenon** is a lightweight, zero-dependency, 100% free AI assistant for your codebases. Designed to run as a **GitHub Action** and as a **Local CLI Tool**, Zenon helps small and individual repositories by reviewing code quality, finding bugs, and optionally rewriting the code and pushing the fixes back automatically.
+<h1 align="center">Zenon AI Assistant</h1>
+
+<p align="center">
+  <strong>Un asistente de inteligencia artificial ultraligero, modular y adaptable para análisis y corrección automática de código base.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-v18%2B-blue?style=flat-square&logo=node.js" alt="Node.js version" />
+  <img src="https://img.shields.io/badge/GitHub_Actions-Compatible-purple?style=flat-square&logo=github-actions" alt="GitHub Actions compatible" />
+  <img src="https://img.shields.io/badge/Zero--Dependencies-100%25-green?style=flat-square" alt="Zero Dependencies" />
+  <img src="https://img.shields.io/badge/License-Proprietary-red?style=flat-square" alt="Proprietary License" />
+</p>
 
 ---
 
-## 🚀 Key Features
+## 🎯 ¿Qué es Zenon?
 
-- **Two operating modes**:
-  - **Assist Mode**: Reads all code files and generates a structured markdown report covering Bugs, Security, Performance, and Code Quality. In Pull Requests, Zenon posts the review as a comment automatically.
-  - **Correct Mode**: Directly modifies the repository files to fix syntax errors, logical bugs, and security issues, then creates a git commit and pushes it.
-- **Zero Cost**: Uses exclusively free-tier AI and GitHub Actions runner minutes.
-- **Zero Dependencies**: Pure Node.js — no `npm install` required. Starts instantly.
-- **Smart Model Selection**: Zenon automatically picks the right AI engine for each task — a fast model for analysis and a more capable one for code correction.
-- **Flexible Invocation**: Trigger on GitHub events (Push, PR) or run from your local terminal.
+**Zenon** es un motor de análisis estático inteligente y agente de desarrollo autónomo integrado directamente como una **GitHub Action** o una **herramienta CLI local**. Está diseñado para auditar repositorios, sugerir mejoras, corregir bugs en caliente de forma autónoma y llevar a cabo directivas técnicas específicas descritas en lenguaje natural.
+
+### ⚡ Características Principales
+
+*   **Arquitectura Multi-Proveedor Adaptativa:** Conexión nativa con **Google Gemini**, **Cohere V2**, **Groq** y **OpenRouter**.
+*   **Orquestación de Fallbacks Inteligente:** Si un modelo falla por cuotas (429) o límites físicos (413/422), Zenon reintenta en cascada utilizando un backoff exponencial asíncrono sobre otros proveedores hasta encontrar una respuesta válida.
+*   **Autoentrenamiento Contextual:** Genera un fingerprint (SHA-256) del repositorio para crear una base de conocimiento contextual (`.zenon_cache.json`). Solo se reentrena si hay cambios en los archivos, ahorrando un 90% de tokens.
+*   **Zero Dependencies:** Escrito en Vanilla JavaScript nativo (Node.js). Cero descargas, inicio instantáneo y mínimo consumo de recursos.
 
 ---
 
-## 🛠️ Setup (GitHub Actions)
+## 🛠️ Modos de Operación
 
-### 1. Get a Zenon API Key
-1. Go to [Google AI Studio](https://aistudio.google.com/) — it's free.
-2. Create an API Key.
-3. In your GitHub repository, go to **Settings → Secrets and variables → Actions → New repository secret**.
-4. Add a secret named **`ZENON_API_KEY`** and paste your key.
+Zenon puede trabajar de tres formas distintas según lo que necesites en cada flujo de desarrollo:
 
-### 2. Add the Workflow to Your Repository
-Create `.github/workflows/zenon.yml` in the repo you want to analyze:
+### 1. Modo `assist` (Auditoría y Reporte)
+Analiza todo el repositorio y genera una auditoría completa cubriendo bugs latentes, vulnerabilidades de seguridad, cuellos de botella de rendimiento y legibilidad.
+*   **En Local:** Imprime las conclusiones en la consola y las guarda en `zenon_report.md`.
+*   **En GitHub Actions:** Si la ejecución se origina desde un Pull Request, publica un comentario de revisión detallado directamente en el PR de GitHub.
+
+### 2. Modo `correct` (Autocorrección Interactiva)
+Identifica fallos evidentes de sintaxis, errores lógicos y problemas de seguridad e **implementa las soluciones editando los archivos en el disco**. 
+*   **En GitHub Actions:** Genera las correcciones, hace un commit y push automático a la rama actual en segundo plano.
+
+### 3. Modo `objective` (Desarrollo por Objetivos)
+Lee un archivo markdown que describe un objetivo de desarrollo técnico específico (por defecto `zenon_objective.md`) y realiza todas las modificaciones necesarias en el código para cumplirlo.
+*   **En GitHub Actions:** Aplica las correcciones a los archivos, realiza commit/push y crea un resumen de cambios.
+
+> [!IMPORTANT]
+> **Recomendación para el Modo `objective`:**
+> Debido a los límites de tokens por petición y cuotas de los tiers gratuitos de las APIs, **se aconseja ser muy específico y acotado** con los objetivos que le encomiendes a Zenon. Es preferible definir tareas granulares y progresivas (por ejemplo: *"Añade validación de tipo string al parámetro email en la función X"*) en lugar de peticiones masivas y ambiguas (ej: *"Reescribe todo el backend"*).
+
+---
+
+## 🚀 Uso Remoto en GitHub Actions (Desde otro Repositorio)
+
+Puedes integrar Zenon en cualquier repositorio privado o público para automatizar las revisiones o la autocorrección.
+
+### 1. Configurar las Claves API en Secrets
+Obtén tus credenciales gratuitas de los proveedores que desees usar y añádelas como secretos del repositorio en **Settings → Secrets and variables → Actions → New repository secret**:
+*   `ZENON_API_KEY` o `GEMINI_API_KEY` *(Requerido - Clave de Google AI Studio)*
+*   `GROQ_API_KEY` *(Opcional - Clave de Groq Console)*
+*   `COHERE_API_KEY` *(Opcional - Clave de Cohere Dashboard)*
+*   `OPENROUTER_API_KEY` *(Opcional - Clave de OpenRouter)*
+
+### 2. Crear la Carpeta de Workflows y Configurar el Archivo
+En el repositorio que quieres auditar, crea las carpetas `.github/workflows/` si no existen y añade el archivo `zenon.yml` con el siguiente contenido:
 
 ```yaml
 name: Zenon AI Assistant
@@ -38,20 +78,28 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Zenon Mode — "assist": analyze & report | "correct": auto-fix & commit'
+        description: 'Modo: assist (reportar) | correct (autocorregir) | objective (cumplir meta)'
         required: true
         default: 'assist'
         type: choice
         options:
           - assist
           - correct
+          - objective
+      objective-file:
+        description: 'Ruta al archivo Markdown del objetivo (solo para modo objective)'
+        required: false
+        default: 'zenon_objective.md'
 
 jobs:
   zenon-assistant:
     runs-on: ubuntu-latest
+    
+    # IMPORTANTE: Estos permisos son necesarios para que Zenon escriba comentarios en PRs
+    # y suba los commits de código autogenerado.
     permissions:
-      contents: write       # Required for Correct mode (git push)
-      pull-requests: write  # Required for PR comment posting
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout Code
@@ -59,75 +107,90 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Zenon
+      - name: Run Zenon AI
         uses: amglogicalis/my-github-actions@main
         with:
           zenon-api-key: ${{ secrets.ZENON_API_KEY }}
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          cohere-api-key: ${{ secrets.COHERE_API_KEY }}
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
           mode: ${{ github.event.inputs.mode || 'assist' }}
+          objective-file: ${{ github.event.inputs.objective-file || 'zenon_objective.md' }}
 ```
 
 ---
 
-## 💻 Running Locally in Your Terminal
+## 💻 Uso Local en la Terminal
 
-You can run Zenon directly from your terminal during development — no GitHub needed.
+Puedes ejecutar Zenon directamente en tu máquina local durante el desarrollo sin depender de la nube de GitHub.
 
-### Prerequisites
-- Node.js v18 or higher
-- Git (recommended, for smarter file filtering)
+### Requisitos
+*   Node.js v18 o superior.
+*   Git (para una correcta detección de cambios y archivos).
 
-### Steps
+### Preparación del Entorno Local
+1. Crea un archivo `.env` en la raíz de tu repositorio con tus claves de API:
+    ```env
+    ZENON_API_KEY=tu_clave_gemini_aqui
+    GROQ_API_KEY=tu_clave_groq_aqui
+    COHERE_API_KEY=tu_clave_cohere_aqui
+    OPENROUTER_API_KEY=tu_clave_openrouter_aqui
+    ```
 
-1. Set the `ZENON_API_KEY` environment variable:
-   - **PowerShell (Windows)**:
-     ```powershell
-     $env:ZENON_API_KEY="your-api-key-here"
-     ```
-   - **Bash (Linux/macOS)**:
-     ```bash
-     export ZENON_API_KEY="your-api-key-here"
-     ```
+### Ejecutar con los Wrappers CLI
+Hemos creado dos scripts ligeros para automatizar la carga de variables del archivo `.env` y llamar a Zenon con cualquier argumento de consola:
 
-2. Run Zenon pointing it at your project directory:
-   ```bash
-   # Assist Mode — generates zenon_report.md with the code review
-   node /path/to/zenon.js --mode assist
-
-   # Correct Mode — modifies files on disk and writes a changes summary
-   node /path/to/zenon.js --mode correct
-   ```
-
-3. Review results:
-   - **Assist**: output is printed to the terminal and saved to `zenon_report.md`.
-   - **Correct**: files are modified in place. Use `git diff` to inspect the changes.
-
-### Local CLI Arguments
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--mode` or `-m` | `assist` or `correct` | `assist` |
-| `--exclude` or `-e` | Comma-separated paths/files to skip | `""` |
-
----
-
-## ⚙️ Action Inputs
-
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `zenon-api-key` | Zenon API Key (stored as a repository secret) | **Yes** | — |
-| `mode` | `assist` (report) or `correct` (auto-fix + commit) | No | `assist` |
-| `github-token` | Token for PR comments and git push | No | `${{ github.token }}` |
-| `exclude` | Comma-separated file names or paths to exclude | No | `""` |
-
-> **Note**: The AI engine is selected automatically based on the mode. No manual model configuration needed.
+*   **En Windows (PowerShell):**
+    ```powershell
+    # Auditoría (Assist)
+    .\zenon.ps1 --mode assist
+    
+    # Autocorrección (Correct)
+    .\zenon.ps1 --mode correct
+    
+    # Cumplimiento de Objetivo (Objective)
+    .\zenon.ps1 --mode objective --objective .\zenon_objective.md
+    ```
+*   **En Linux / macOS:**
+    ```bash
+    chmod +x zenon.sh
+    
+    # Auditoría (Assist)
+    ./zenon.sh --mode assist
+    
+    # Autocorrección (Correct)
+    ./zenon.sh --mode correct
+    
+    # Cumplimiento de Objetivo (Objective)
+    ./zenon.sh --mode objective --objective zenon_objective.md
+    ```
 
 ---
 
-## 🔒 Automatically Ignored Files
+## 📥 Entradas de la GitHub Action (`action.yml`)
 
-Zenon skips the following to protect secrets, respect rate limits, and avoid noise:
+| Parámetro | Descripción | Requerido | Por Defecto |
+| :--- | :--- | :---: | :--- |
+| `zenon-api-key` | API Key para Gemini (AI Studio). | **Sí** | — |
+| `groq-api-key` | API Key para Groq. | No | — |
+| `cohere-api-key` | API Key para Cohere. | No | — |
+| `openrouter-api-key` | API Key para OpenRouter. | No | — |
+| `mode` | Modo de ejecución: `assist`, `correct` u `objective`. | No | `assist` |
+| `objective-file` | Archivo Markdown de directivas para el modo `objective`. | No | `zenon_objective.md` |
+| `exclude` | Archivos/rutas separados por comas que se deben ignorar. | No | `""` |
+| `github-token` | Token interno de GitHub para push y comentarios. | No | `${{ github.token }}` |
 
-- `.git`, `node_modules`, `dist`, `build`, `venv`, `target` directories
-- Lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, etc.)
-- Binary formats: images, audio, video, archives, fonts, executables
-- Files over **100 KB** (e.g. minified bundles)
-- Any file matching patterns passed via the `exclude` input
+---
+
+## 🔒 Filtros de Archivos Seguros
+
+Zenon ignora automáticamente archivos pesados y binarios para optimizar el contexto y evitar fugas de información:
+*   **Carpetas excluidas:** `.git`, `node_modules`, `dist`, `build`, `venv`, `.venv`, `.env` y similares.
+*   **Formatos excluidos:** Imágenes, audio, vídeo, fuentes, archivos comprimidos (`.zip`, `.rar`) y ejecutables.
+*   **Límites de tamaño:** Cualquier archivo de texto que supere los **100 KB** se ignora para evitar desbordar los límites de tokens de los modelos más ligeros.
+
+---
+
+## 📄 Licencia
+
+Este proyecto es software propietario y pertenece a **Adrián (amglogicalis)**. Todos los derechos reservados. Consulta el archivo [LICENSE](LICENSE) para más detalles sobre sus términos de uso y exclusión de fines comerciales.

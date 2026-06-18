@@ -1,48 +1,38 @@
-﻿# Plan de Evolución: Zenon AI (v2.0)
+# Evolución Incremental de Zenon
 
 Documento de referencia para el desarrollo incremental de Zenon. Cada paso se implementa sobre el anterior sin romper la funcionalidad existente.
 
-> **Estado actual**: ¡Todos los pasos de la evolución completados con éxito! Zenon es ahora un orquestador AI multi-proveedor autoadaptativo con caché contextual.
+> **Estado actual**: ¡Pasos 1, 2, 3 y 4 completados con éxito! Paso 5 en planificación.
 
 ---
 
-## Paso 1: Cadena de Fallback de Modelos con Backoff Asincrono - COMPLETADO ✅
-
-### Objetivo
-Asegurar que Zenon complete su ejecución con éxito incluso si el modelo principal devuelve errores 429 (cuota excedida) o 503 (servidor saturado).
-
-### Mecanismo
-- Error 429: espera backoff exponencial (2s -> 4s -> 8s) antes del siguiente modelo de la cadena.
-- Error 5xx/400: reintenta con el siguiente modelo de la cadena inmediatamente.
+## Paso 1: Cadena de Fallback de Modelos con Backoff Asíncrono - COMPLETADO ✅
+- Fallbacks cruzados con backoff exponencial ante límites de cuota (429) y errores de red.
 
 ---
 
 ## Paso 2: Autoentrenamiento y Aprendizaje Contextual - COMPLETADO ✅
-
-### Objetivo
-Zenon entiende la arquitectura del repo antes de analizar/corregir, buscando en internet documentacion relevante y cacheando el conocimiento aprendido.
-
-### Mecanismo
-- Google Search Grounding: inyecta tools: [{ googleSearch: {} }] en la llamada a Gemini para búsquedas web nativas.
-- Cache local (.zenon_cache.json, agregado automáticamente a .gitignore): almacena la firma del estado del repositorio (SHA-256) y el perfil de conocimiento. Si no hay cambios en el repo, salta el autoentrenamiento.
+- Firmas SHA-256 para repositorios.
+- Caché local .zenon_cache.json autogestionada e ignorada en .gitignore.
+- Google Search Grounding durante el autoentrenamiento.
 
 ---
 
 ## Paso 3: Evolución y Multi-proveedor - COMPLETADO ✅
+- Integración de Gemini, Groq, Cohere, DeepSeek (removido) y OpenRouter.
+- Enrutamiento dinámico según el stack dominante (JS, Python, Go, DevOps) y el tamaño del repo.
 
-### Objetivo
-Integrar proveedores de IA adicionales gratuitos y crear un selector inteligente que elija el mejor modelo segun el tipo de codigo del repositorio.
+---
 
-### Catalogo de Proveedores Integrados
-| Proveedor | Modelo Principal | Ventaja | Clave de Entorno |
-|---|---|---|---|
-| Google Gemini | gemini-2.5-flash | Contexto enorme y búsqueda | ZENON_API_KEY |
-| Groq API | llama-3.3-70b-versatile | Lógica avanzada y velocidad | GROQ_API_KEY |
-| DeepSeek | deepseek-chat | Razonamiento óptimo en backend | DEEPSEEK_API_KEY |
-| Cohere | command-r-plus | Síntesis multilingüe | COHERE_API_KEY |
-| OpenRouter | Llama 3.3 70B (free) | Respaldo gratuito universal | OPENROUTER_API_KEY |
+## Paso 4: Modo "Objective" y Scripts de Terminal - COMPLETADO ✅
+- Zenon lee un archivo de objetivos (por defecto zenon_objective.md o el indicado por --objective <ruta>).
+- Analiza el contexto y ejecuta una petición estructurada JSON solicitando la creación/edición de archivos que resuelvan la tarea especificada.
+- Aplica los cambios directamente en el disco.
+- Wrappers zenon.ps1 (Windows) y zenon.sh (Linux/macOS) listos para ejecución local simple.
 
-### Selector Inteligente
-1. Pre-análisis de extensiones del repo para detectar si predomina JS/TS, Python, Go o DevOps.
-2. Construye una cadena prioritaria cruzando proveedores según el stack y el tamaño del repo.
-3. Si un proveedor falla, el fallback continúa automáticamente usando el siguiente proveedor en orden.
+---
+
+## Paso 5: Expansión de Modelos de Inteligencia Artificial - PLANIFICADO ⏳
+- Integración de nuevos proveedores y modelos de lenguaje de última generación.
+- Soporte para modelos locales open-weight y modelos especializados en programación (e.g., Llama 4, Qwen Coder, DeepSeek R1).
+- Optimización de consumo de tokens y refinamiento de la lógica de enrutamiento basada en las características de las APIs más recientes.

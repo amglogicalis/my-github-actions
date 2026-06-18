@@ -10,18 +10,13 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Operation Mode: "assist" to analyze and suggest, or "correct" to automatically fix code.'
+        description: 'Zenon Mode — "assist": analyze & report | "correct": auto-fix & commit'
         required: true
         default: 'assist'
         type: choice
         options:
           - assist
           - correct
-      model:
-        description: 'Gemini model to use'
-        required: false
-        default: 'gemini-1.5-flash'
-        type: string
 
 jobs:
   zenon:
@@ -43,6 +38,5 @@ jobs:
       - name: Run Zenon AI Assistant
         uses: ./ # References the local action defined in action.yml of this repo
         with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
           mode: ${{ github.event.inputs.mode || 'assist' }}
-          model: ${{ github.event.inputs.model || 'gemini-1.5-flash' }}

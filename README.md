@@ -1,33 +1,31 @@
-# 🤖 Zenon: AI Assistant GitHub Action
+# 🤖 Zenon AI Assistant
 
-**Zenon** is a lightweight, zero-dependency, 100% free AI assistant for your codebases. Named Zenon, it is powered by the Gemini API (using the free tier) and designed to run both as a **GitHub Action** and a **Local CLI Tool**.
-
-Zenon helps small or individual repositories by reviewing code quality, finding bugs, detecting security issues, and optionally rewriting the code directly on disk and pushing the fixes back to your repository.
+**Zenon** is a lightweight, zero-dependency, 100% free AI assistant for your codebases. Designed to run as a **GitHub Action** and as a **Local CLI Tool**, Zenon helps small and individual repositories by reviewing code quality, finding bugs, and optionally rewriting the code and pushing the fixes back automatically.
 
 ---
 
 ## 🚀 Key Features
 
-- **Double-mode Operation**:
-  - **Assist Mode**: Analyzes code files and generates a markdown code review report (Bugs, Security, Performance, Cleanliness). In PRs, it automatically comments with its review.
-  - **Correct Mode**: Directly modifies the repository files to fix syntax errors, logical bugs, and other code smell issues, creating a git commit and pushing it automatically.
-- **Zero Cost**: Works entirely using Gemini's free tier (Google AI Studio) and GitHub Actions free runner minutes.
-- **Zero Dependencies**: Pure Node.js script. Fast startup, no setup time, runs natively on standard runners and local machines.
-- **Flexible Invocation**: Trigger automatically on GitHub events (Push, PR) or run manually from your local terminal.
+- **Two operating modes**:
+  - **Assist Mode**: Reads all code files and generates a structured markdown report covering Bugs, Security, Performance, and Code Quality. In Pull Requests, Zenon posts the review as a comment automatically.
+  - **Correct Mode**: Directly modifies the repository files to fix syntax errors, logical bugs, and security issues, then creates a git commit and pushes it.
+- **Zero Cost**: Uses exclusively free-tier AI and GitHub Actions runner minutes.
+- **Zero Dependencies**: Pure Node.js — no `npm install` required. Starts instantly.
+- **Smart Model Selection**: Zenon automatically picks the right AI engine for each task — a fast model for analysis and a more capable one for code correction.
+- **Flexible Invocation**: Trigger on GitHub events (Push, PR) or run from your local terminal.
 
 ---
 
 ## 🛠️ Setup (GitHub Actions)
 
-### 1. Get a Gemini API Key
-To use Zenon for free:
-1. Go to [Google AI Studio](https://aistudio.google.com/).
-2. Create a free API Key.
-3. In your GitHub repository, go to **Settings** > **Secrets and variables** > **Actions** > **New repository secret**.
-4. Add the secret with the name `GEMINI_API_KEY` and paste your key.
+### 1. Get a Zenon API Key
+1. Go to [Google AI Studio](https://aistudio.google.com/) — it's free.
+2. Create an API Key.
+3. In your GitHub repository, go to **Settings → Secrets and variables → Actions → New repository secret**.
+4. Add a secret named **`ZENON_API_KEY`** and paste your key.
 
-### 2. Configure the Workflow
-Create a file at `.github/workflows/zenon.yml` in your repository:
+### 2. Add the Workflow to Your Repository
+Create `.github/workflows/zenon.yml` in the repo you want to analyze:
 
 ```yaml
 name: Zenon AI Assistant
@@ -40,7 +38,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Operation Mode (assist or correct)'
+        description: 'Zenon Mode — "assist": analyze & report | "correct": auto-fix & commit'
         required: true
         default: 'assist'
         type: choice
@@ -51,86 +49,85 @@ on:
 jobs:
   zenon-assistant:
     runs-on: ubuntu-latest
-    
-    # REQUIRED: Grant contents and PR comment write permissions to GitHub Actions bot
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write       # Required for Correct mode (git push)
+      pull-requests: write  # Required for PR comment posting
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetch all history for git diff support
+          fetch-depth: 0
 
       - name: Run Zenon
         uses: amglogicalis/my-github-actions@main
         with:
-          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
           mode: ${{ github.event.inputs.mode || 'assist' }}
-          model: 'gemini-1.5-flash' # Default free-tier model
 ```
 
 ---
 
 ## 💻 Running Locally in Your Terminal
 
-You can run Zenon directly from your terminal to assist you during development without committing to GitHub.
+You can run Zenon directly from your terminal during development — no GitHub needed.
 
 ### Prerequisites
-- Node.js (version 18 or higher)
-- Git (optional, but highly recommended for auto file filtering)
+- Node.js v18 or higher
+- Git (recommended, for smarter file filtering)
 
-### Execution Steps
-1. Set the `GEMINI_API_KEY` environment variable in your terminal:
+### Steps
+
+1. Set the `ZENON_API_KEY` environment variable:
    - **PowerShell (Windows)**:
      ```powershell
-     $env:GEMINI_API_KEY="your-gemini-api-key-here"
+     $env:ZENON_API_KEY="your-api-key-here"
      ```
    - **Bash (Linux/macOS)**:
      ```bash
-     export GEMINI_API_KEY="your-gemini-api-key-here"
+     export ZENON_API_KEY="your-api-key-here"
      ```
 
-2. Run the script:
-   - **Assist Mode** (Analyze and create a review report):
-     ```bash
-     node path/to/zenon.js --mode assist
-     ```
-     This prints the report in your terminal and saves a detailed markdown report at `zenon_report.md` in the current folder.
+2. Run Zenon pointing it at your project directory:
+   ```bash
+   # Assist Mode — generates zenon_report.md with the code review
+   node /path/to/zenon.js --mode assist
 
-   - **Correct Mode** (Identify bugs and fix files on disk):
-     ```bash
-     node path/to/zenon.js --mode correct
-     ```
-     This automatically modifies the files in your project. You can run `git diff` afterward to review what changes Zenon applied.
+   # Correct Mode — modifies files on disk and writes a changes summary
+   node /path/to/zenon.js --mode correct
+   ```
+
+3. Review results:
+   - **Assist**: output is printed to the terminal and saved to `zenon_report.md`.
+   - **Correct**: files are modified in place. Use `git diff` to inspect the changes.
 
 ### Local CLI Arguments
-- `--mode` or `-m`: `assist` or `correct` (default: `assist`).
-- `--model` or `-d`: Gemini model to use (default: `gemini-1.5-flash`).
-- `--exclude` or `-e`: Comma-separated list of filenames or paths to ignore (e.g. `--exclude "temp.js,src/legacy/"`).
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--mode` or `-m` | `assist` or `correct` | `assist` |
+| `--exclude` or `-e` | Comma-separated paths/files to skip | `""` |
 
 ---
 
-## ⚙️ Configuration Inputs
+## ⚙️ Action Inputs
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
-| `gemini-api-key` | Google AI Studio (Gemini) API Key | **Yes** | N/A |
-| `mode` | `assist` (reports issues) or `correct` (directly applies fixes) | No | `assist` |
-| `model` | Gemini model name | No | `gemini-1.5-flash` |
-| `github-token` | GitHub token for PR comments and git push | No | `${{ github.token }}` |
-| `exclude` | Comma-separated file names/paths to exclude | No | `""` |
+| `zenon-api-key` | Zenon API Key (stored as a repository secret) | **Yes** | — |
+| `mode` | `assist` (report) or `correct` (auto-fix + commit) | No | `assist` |
+| `github-token` | Token for PR comments and git push | No | `${{ github.token }}` |
+| `exclude` | Comma-separated file names or paths to exclude | No | `""` |
+
+> **Note**: The AI engine is selected automatically based on the mode. No manual model configuration needed.
 
 ---
 
-## 🔒 Security and Ignored Files
+## 🔒 Automatically Ignored Files
 
-To prevent leaks of secrets and avoid wasting AI tokens on unneeded files, Zenon automatically ignores:
-- `.git` and `node_modules` folders.
-- Typical build/dependency folders (e.g., `dist`, `build`, `venv`, `target`, `bin`).
-- Large lock files (`package-lock.json`, `yarn.lock`, etc.).
-- Binary formats (images, audio, video, zip files, PDFs).
-- Files larger than **100 KB** (to protect rate limits and prevent minified assets analysis).
-- Hidden directories starting with `.` (excluding `.github` files, etc.).
-- Files that are explicitly Git-ignored (if running in a git repository).
+Zenon skips the following to protect secrets, respect rate limits, and avoid noise:
+
+- `.git`, `node_modules`, `dist`, `build`, `venv`, `target` directories
+- Lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, etc.)
+- Binary formats: images, audio, video, archives, fonts, executables
+- Files over **100 KB** (e.g. minified bundles)
+- Any file matching patterns passed via the `exclude` input

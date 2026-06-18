@@ -216,12 +216,12 @@ async function callGemini(apiKey, model, mode, systemInstruction, prompt) {
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${errText}`);
+    throw new Error(`Zenon AI engine error (${response.status}): ${errText}`);
   }
 
   const data = await response.json();
   if (!data.candidates || data.candidates.length === 0) {
-    throw new Error('No candidates returned from Gemini API. It might have been blocked by safety filters.');
+    throw new Error('No response candidates returned. The request may have been blocked by safety filters.');
   }
 
   const candidate = data.candidates[0];
@@ -319,15 +319,19 @@ async function main() {
   const cliArgs = parseArgs();
   
   // Resolve configurations prioritizing CLI args over GHA Inputs over Env Vars
-  const apiKey = cliArgs.apiKey || process.env.INPUT_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = cliArgs.apiKey || process.env.INPUT_ZENON_API_KEY || process.env.ZENON_API_KEY || process.env.GEMINI_API_KEY;
   const mode = (cliArgs.mode || process.env.INPUT_MODE || 'assist').toLowerCase();
-  const model = cliArgs.model || process.env.INPUT_MODEL || 'gemini-1.5-flash';
   const exclude = cliArgs.exclude || process.env.INPUT_EXCLUDE || '';
   const githubToken = process.env.INPUT_GITHUB_TOKEN || process.env.GITHUB_TOKEN;
   const isCI = !!process.env.GITHUB_ACTIONS;
 
+  // Auto-select the best model for each task (no user input needed)
+  // Assist: lighter & faster model — ideal for reading and explaining code
+  // Correct: smarter model — better reasoning for rewriting and fixing code
+  const model = mode === 'correct' ? 'gemini-2.5-flash' : 'gemini-1.5-flash';
+
   if (!apiKey) {
-    console.error('Error: GEMINI_API_KEY is not defined. Please set it in your environment or action secrets.');
+    console.error('Error: ZENON_API_KEY is not defined. Please configure it as a repository secret named ZENON_API_KEY.');
     process.exit(1);
   }
 
@@ -338,7 +342,6 @@ async function main() {
 
   console.log(`Zenon starting...`);
   console.log(`Mode: ${mode}`);
-  console.log(`Model: ${model}`);
   console.log(`Context: ${isCI ? 'GitHub Actions CI' : 'Local Terminal'}`);
 
   console.log('Scanning repository for code files...');
@@ -363,7 +366,7 @@ async function main() {
     }
   }
 
-  console.log(`Total codebase payload size: ${(totalSize / 1024).toFixed(2)} KB`);
+  console.log(`Total codebase size: ${(totalSize / 1024).toFixed(2)} KB | Engine: ${mode === 'correct' ? 'precision' : 'analysis'} mode`);
 
   // Prompt logic
   const isCorrectMode = mode === 'correct';
@@ -398,20 +401,20 @@ ${codebasePayload}
 Analyze these files and perform the requested actions for mode: ${mode.toUpperCase()}.
 ${isCorrectMode ? 'Return the files schema JSON.' : 'Return the Markdown code review report.'}`;
 
-  console.log('Sending request to Gemini API...');
+  console.log('Zenon is analyzing your codebase...');
   
   try {
     const rawResponse = await callGemini(apiKey, model, mode, systemInstruction, userPrompt);
-    console.log('Gemini API response received successfully.');
+    console.log('Analysis complete.');
 
     if (isCorrectMode) {
       let result;
       try {
         result = JSON.parse(rawResponse);
       } catch (parseErr) {
-        console.error('Failed to parse JSON response from Gemini. Raw response was:');
+        console.error('Failed to parse correction response. Raw output was:');
         console.log(rawResponse);
-        throw new Error('Gemini response was not valid JSON: ' + parseErr.message);
+        throw new Error('Response was not valid JSON: ' + parseErr.message);
       }
 
       if (!result.files || !Array.isArray(result.files)) {

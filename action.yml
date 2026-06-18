@@ -6,8 +6,8 @@ branding:
   color: 'purple'
 
 inputs:
-  gemini-api-key:
-    description: 'Gemini API Key from Google AI Studio'
+  zenon-api-key:
+    description: 'Zenon AI API Key (configure as a repository secret)'
     required: true
   mode:
     description: 'Operating mode: "assist" (analyses code & suggests improvements) or "correct" (directly modifies files & commits)'
@@ -17,10 +17,7 @@ inputs:
     description: 'GitHub Token for posting PR comments and pushing code changes (defaults to github.token)'
     required: false
     default: '${{ github.token }}'
-  model:
-    description: 'Gemini model to use (e.g. gemini-1.5-flash, gemini-2.5-flash)'
-    required: false
-    default: 'gemini-1.5-flash'
+
   exclude:
     description: 'Comma-separated list of file names or paths to exclude from analysis'
     required: false

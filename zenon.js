@@ -330,13 +330,31 @@ async function main() {
   // Correct: smarter model — better reasoning for rewriting and fixing code
   const model = mode === 'correct' ? 'gemini-2.5-flash' : 'gemini-1.5-flash';
 
+  // --- Startup diagnostics (visible in CI logs) ---
+  console.log('=== Zenon startup ===');
+  console.log(`Node.js      : ${process.version}`);
+  console.log(`Mode         : ${mode}`);
+  console.log(`Context      : ${isCI ? 'GitHub Actions CI' : 'Local Terminal'}`);
+  console.log(`API Key      : ${apiKey ? 'found ✅' : 'MISSING ❌'}`);
+  console.log(`GitHub Token : ${githubToken ? 'found ✅' : 'not set (PR comments disabled)'}`);
+  console.log(`Exclude      : "${exclude || '(none)'}"`);
+  console.log('=====================');
+
   if (!apiKey) {
-    console.error('Error: ZENON_API_KEY is not defined. Please configure it as a repository secret named ZENON_API_KEY.');
+    console.error('');
+    console.error('❌ ZENON_API_KEY is not set.');
+    console.error('   In GitHub Actions: add a repository secret named ZENON_API_KEY.');
+    console.error('   Locally: run  $env:ZENON_API_KEY="your-key"  before executing zenon.js');
+    console.error('');
+    console.error('   Env vars checked (in order):');
+    console.error(`     INPUT_ZENON_API_KEY : ${process.env.INPUT_ZENON_API_KEY ? 'set' : 'not set'}`);
+    console.error(`     ZENON_API_KEY       : ${process.env.ZENON_API_KEY ? 'set' : 'not set'}`);
+    console.error(`     GEMINI_API_KEY      : ${process.env.GEMINI_API_KEY ? 'set' : 'not set'}`);
     process.exit(1);
   }
 
   if (mode !== 'assist' && mode !== 'correct') {
-    console.error(`Error: Invalid mode "${mode}". Supported modes are "assist" and "correct".`);
+    console.error(`❌ Invalid mode "${mode}". Supported modes: "assist" or "correct".`);
     process.exit(1);
   }
 
@@ -499,5 +517,19 @@ ${isCorrectMode ? 'Return the files schema JSON.' : 'Return the Markdown code re
     process.exit(1);
   }
 }
+
+// Global safety net — catch any unhandled promise rejection or exception
+process.on('unhandledRejection', (reason) => {
+  console.error('❌ Unhandled promise rejection in Zenon:');
+  console.error(reason);
+  process.exit(1);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught exception in Zenon:');
+  console.error(err.message);
+  console.error(err.stack);
+  process.exit(1);
+});
 
 main();

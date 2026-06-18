@@ -25,6 +25,20 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Zenon Pre-flight Check
+      shell: bash
+      run: |
+        echo "=== Zenon Pre-flight ==="
+        echo "Node version : $(node --version)"
+        echo "Working dir  : $(pwd)"
+        echo "Action path  : ${{ github.action_path }}"
+        echo "Mode         : $INPUT_MODE"
+        echo "API Key set  : $([ -n "$INPUT_ZENON_API_KEY" ] && echo 'YES ✅' || echo 'NO ❌')"
+        echo "========================"
+      env:
+        INPUT_ZENON_API_KEY: ${{ inputs.zenon-api-key }}
+        INPUT_MODE: ${{ inputs.mode }}
+
     - name: Run Zenon AI Assistant
       shell: bash
       run: node "${{ github.action_path }}/zenon.js"
@@ -34,3 +48,4 @@ runs:
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
         INPUT_EXCLUDE: ${{ inputs.exclude }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
+

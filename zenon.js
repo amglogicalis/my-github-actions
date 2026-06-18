@@ -872,18 +872,32 @@ async function main() {
     console.log('🧠 Base de conocimiento no encontrada o desactualizada. Iniciando autoentrenamiento...');
     ensureGitignore();
 
-    const trainingSystemInstruction = `You are "Zenon", a codebase architect.
-Your task is to analyze the user's repository files and build a comprehensive profile of the codebase.
+    // El system instruction NO menciona "Google Search tool" porque:
+    //  - Gemini recibe el tool real vía enableGrounding=true en el body de la API (no necesita que el prompt lo pida).
+    //  - Cohere/Groq/OpenRouter no tienen ese tool y un prompt que lo mencione causa error 422/400.
+    // En su lugar, todos los modelos son instruidos a usar su conocimiento entrenado, lo cual funciona universalmente.
+    const trainingSystemInstruction = `You are "Zenon", a codebase architect and senior software engineer.
+Your task is to analyze the user's repository files and build a comprehensive knowledge profile of the codebase.
 Identify:
-1. The main programming languages, packages, and frameworks used.
-2. The architectural design patterns, folder structure, and entry points.
-3. Crucial third-party APIs, libraries, and external services integrated.
-4. Any custom conventions, mechanisms, or coding styles used in the project.
+1. The main programming languages, packages, frameworks, and runtimes used.
+2. The architectural design patterns, folder structure, entry points, and module boundaries.
+3. Crucial third-party APIs, libraries, and external services integrated, with notes on their versions and usage patterns.
+4. Any custom conventions, error handling mechanisms, configuration patterns, or coding styles present in the project.
+5. Known risks, potential bugs, security concerns, or anti-patterns based on your engineering knowledge.
 
-Use your Google Search tool to search for best practices, documentation, and known issues related to the specific technologies and libraries used in this repository.
+Apply your training knowledge of software engineering best practices, security guidelines, and documentation for the specific technologies found in this codebase to enrich your analysis.
 Provide a clear, concise, and structured summary of your findings. This summary will be cached and used by Zenon to guide code reviews and corrections.`;
 
-    const trainingUserPrompt = `Here are the codebase files for training:\n\n${codebasePayload}\n\nAnalyze this codebase, perform searches on the integrated technologies to verify current best practices, and return the learned project knowledge profile.`;
+    const trainingUserPrompt = `Here are the codebase files for training:
+
+${codebasePayload}
+
+Analyze the codebase above. Based on the files and your engineering knowledge:
+- Summarize the tech stack and architecture.
+- Identify the most important patterns and conventions used.
+- Flag any notable risks, known library issues, or best-practice gaps you can infer.
+- Return a concise, structured knowledge profile that will help a future AI code reviewer understand this project.
+Return the learned project knowledge profile now.`;
 
     try {
       console.log('🔍 Realizando búsquedas y autoentrenamiento...');

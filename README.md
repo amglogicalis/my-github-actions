@@ -139,6 +139,12 @@ jobs:
 >
 > De esta forma, **cada ejecución de Zenon es más inteligente que la anterior** y consume menos tokens de API, sin necesidad de commitear el archivo de caché a tu repositorio ni de exponerlo públicamente.
 
+> [!NOTE]
+> **La caché local y la caché de GitHub son independientes y no comparten contenido.**
+> - La caché **local** (`.zenon_cache.json` en tu PC) crece con cada ejecución del CLI en tu máquina.
+> - La caché **de GitHub Actions** crece con cada ejecución del workflow en la nube de GitHub.
+> - Lo que Zenon aprende en local **no se sincroniza** automáticamente con GitHub, ni al revés.
+
 ---
 
 ## 💻 Uso Local en la Terminal

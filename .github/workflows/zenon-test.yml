@@ -1,9 +1,6 @@
 name: Zenon AI Assistant Self-Test
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main

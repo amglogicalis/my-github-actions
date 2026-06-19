@@ -89,7 +89,7 @@
     "description": "Meta Llama 3.1 405B — massive open-weight, excellent for deep code understanding.",
     "specialization": ["code", "reasoning", "general"],
     "providers": [
-      { "provider": "github_models", "api_model_id": "Meta-Llama-3.1-405B-Instruct", "maxInputChars": 128000, "tier": "medium" }
+      { "provider": "github_models", "api_model_id": "Meta-Llama-3.1-405B-Instruct", "maxInputChars": 28000, "tier": "medium" }
     ]
   },
   {
@@ -97,7 +97,7 @@
     "description": "Meta Llama 3.1 8B — small, very fast, perfect for lightweight selector logic.",
     "specialization": ["general"],
     "providers": [
-      { "provider": "github_models", "api_model_id": "Meta-Llama-3.1-8B-Instruct", "maxInputChars": 128000, "tier": "medium" },
+      { "provider": "github_models", "api_model_id": "Meta-Llama-3.1-8B-Instruct", "maxInputChars": 28000, "tier": "medium" },
       { "provider": "groq", "api_model_id": "llama-3.1-8b-instant", "maxInputChars": 24000, "tier": "small" }
     ]
   },

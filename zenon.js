@@ -110,9 +110,9 @@ const PROVIDERS = {
     keyName: 'GH_MODELS_TOKEN',
     models: [
       { id: 'gpt-4o',                       maxInputChars: 128000 }, // GPT-4o flagship
-      { id: 'Meta-Llama-3.1-405B-Instruct', maxInputChars: 128000 }, // Llama 405B
+      { id: 'Meta-Llama-3.1-405B-Instruct', maxInputChars:  28000 }, // Llama 405B (8k tokens limit)
       { id: 'gpt-4o-mini',                  maxInputChars: 128000 }, // GPT-4o Mini (selector)
-      { id: 'Meta-Llama-3.1-8B-Instruct',  maxInputChars: 128000 }  // Llama 8B (selector)
+      { id: 'Meta-Llama-3.1-8B-Instruct',  maxInputChars:  28000 }  // Llama 8B (selector) (8k tokens limit)
     ]
   }
 };
@@ -129,7 +129,7 @@ function getAvailableKeys(cliArgs) {
     openrouter:    cliArgs.openrouterApiKey  || process.env.INPUT_OPENROUTER_API_KEY  || process.env.OPENROUTER_API_KEY,
     samba:         cliArgs.sambaApiKey       || process.env.INPUT_SAMBA_API_KEY       || process.env.SAMBA_API_KEY,
     cerebras:      cliArgs.cerebrasApiKey    || process.env.INPUT_CEREBRAS_API_KEY    || process.env.CEREBRAS_API_KEY,
-    github_models: cliArgs.ghModelsToken     || cliArgs.githubModelsToken             || process.env.INPUT_GH_MODELS_TOKEN || process.env.GH_MODELS_TOKEN || process.env.INPUT_GITHUB_MODELS_TOKEN || process.env.GITHUB_MODELS_TOKEN
+    github_models: cliArgs.ghModelsToken     || cliArgs.githubModelsToken             || process.env.INPUT_GH_MODELS_TOKEN || process.env.GH_MODELS_TOKEN || process.env.INPUT_GITHUB_MODELS_TOKEN || process.env.GITHUB_MODELS_TOKEN || process.env.TOKEN_GH
   };
 }
 
@@ -647,57 +647,63 @@ async function callGeminiModel(apiKey, model, mode, systemInstruction, prompt, e
  * Context tier per model — controls instruction verbosity and truncation budget.
  * Tiers: 'large' ≥200K chars | 'medium' 50K-199K | 'small' <50K
  */
-const MODEL_PROFILES = {
-  // Gemini
-  'gemini-2.5-flash':         { tier: 'large'  },
-  'gemini-flash-lite-latest':  { tier: 'large'  },
-  'gemini-3.1-flash-lite':     { tier: 'large'  },
-  'gemma-4-31b-it':            { tier: 'large'  },
-  // Cohere
-  'command-a-plus-05-2026':    { tier: 'large'  },
-  'command-r-plus-08-2024':    { tier: 'large'  },
-  'command-a-03-2025':         { tier: 'large'  },
-  'command-r-08-2024':         { tier: 'large'  },
-  // Groq — conservative, small context on free tier
-  'llama-3.3-70b-versatile':                    { tier: 'small'  },
-  'meta-llama/llama-4-scout-17b-16e-instruct':  { tier: 'medium' },
-  'qwen/qwen3.6-27b':                           { tier: 'medium' },
-  'llama-3.1-8b-instant':                       { tier: 'small'  },
-  // OpenRouter
-  'cohere/north-mini-code:free':             { tier: 'medium' },
-  'qwen/qwen3-coder:free':                   { tier: 'medium' },
-  'google/gemma-4-31b-it:free':              { tier: 'medium' },
-  'meta-llama/llama-3.3-70b-instruct:free':  { tier: 'medium' },
-  'google/gemini-3.1-flash-lite':            { tier: 'large'  },
-  // SambaNova
-  'DeepSeek-V3.2':                           { tier: 'medium' },
-  'gpt-oss-120b':                            { tier: 'medium' },
-  'Meta-Llama-3.3-70B-Instruct':             { tier: 'medium' },
-  'gemma-4-31B-it':                          { tier: 'medium' },
-  'MiniMax-M2.7':                            { tier: 'medium' },
-  // Cerebras
-  'zai-glm-4.7':                             { tier: 'medium' },
-  // GitHub Models
-  'gpt-4o':                                  { tier: 'medium' },
-  'Meta-Llama-3.1-405B-Instruct':            { tier: 'medium' },
-  'gpt-4o-mini':                             { tier: 'medium' },
-  'Meta-Llama-3.1-8B-Instruct':             { tier: 'medium' }
-};
+  const MODEL_PROFILES = {
+    // Google Gemini
+    'gemini-2.5-flash':         { tier: 'large', maxTokens: 1048576, maxChars: 4000000 },
+    'gemini-flash-lite-latest':  { tier: 'large', maxTokens: 1048576, maxChars: 4000000 },
+    'gemini-3.1-flash-lite':     { tier: 'large', maxTokens: 1048576, maxChars: 4000000 },
+    // Google Gemma
+    'gemma-4-31b-it':            { tier: 'large', maxTokens: 256000, maxChars: 1000000 },
+    // OpenAI / GitHub Models
+    'gpt-4o':                    { tier: 'medium', maxTokens: 128000, maxChars: 500000 },
+    'gpt-4o-mini':               { tier: 'medium', maxTokens: 128000, maxChars: 500000 },
+    'gpt-oss-120b':              { tier: 'medium', maxTokens: 128000, maxChars: 500000 },
+    // Meta Llama
+    'llama-3.1-405b-instruct':   { tier: 'medium', maxTokens: 128000, maxChars: 500000 },
+    'llama-3.1-8b-instant':      { tier: 'small', maxTokens: 128000, maxChars: 500000 },
+    'llama-3.3-70b-versatile':   { tier: 'small', maxTokens: 131072, maxChars: 520000 },
+    'meta-llama/llama-4-scout-17b-16e-instruct': { tier: 'medium', maxTokens: 10000000, maxChars: 40000000 }, // Groq may limit to 60k
+    // Qwen (Alibaba)
+    'qwen/qwen3-coder:free':     { tier: 'medium', maxTokens: 256000, maxChars: 1000000 },
+    'qwen/qwen3.6-27b':          { tier: 'medium', maxTokens: 262144, maxChars: 1050000 },
+    // Cohere
+    'command-a-plus-05-2026':    { tier: 'large', maxTokens: 128000, maxChars: 500000 },
+    'command-r-plus-08-2024':    { tier: 'large', maxTokens: 128000, maxChars: 500000 },
+    'command-a-03-2025':         { tier: 'large', maxTokens: 256000, maxChars: 1000000 },
+    'command-r-08-2024':         { tier: 'large', maxTokens: 128000, maxChars: 500000 },
+    'cohere/north-mini-code:free': { tier: 'medium', maxTokens: 256000, maxChars: 1000000 },
+    // Cerebras
+    'zai-glm-4.7':               { tier: 'medium', maxTokens: 131072, maxChars: 500000 },
+    // SambaNova / OpenRouter / MiniMax (no official context found, assuming medium)
+    'DeepSeek-V3.2':             { tier: 'medium', maxTokens: 128000, maxChars: 500000 },
+    'MiniMax-M2.7':              { tier: 'medium', maxTokens: 128000, maxChars: 500000 }
+  };
 
-/**
- * Adapts the system instruction to the model's context tier.
- * For small/medium models, removes the verbose REPORT FORMAT block
- * to save ~800 chars and leave more room for codebase content.
- */
-function adaptSystemInstruction(systemInstruction, model) {
-  const profile = MODEL_PROFILES[model] || { tier: 'medium' };
-  if (profile.tier === 'large') return systemInstruction;
+  /**
+   * Adapts the system instruction to the model's context tier and available tokens.
+   * For models with smaller context, it removes the verbose REPORT FORMAT block
+   * and can truncate further if a precise maxChars limit is known.
+   */
+  function adaptSystemInstruction(systemInstruction, model) {
+    const profile = MODEL_PROFILES[model] || { tier: 'medium', maxTokens: 128000, maxChars: 500000 }; // Default profile
+    if (profile.tier === 'large') return systemInstruction;
 
-  // Strip the REPORT FORMAT section for small/medium context models
-  let adapted = systemInstruction
-    .replace(/REPORT FORMAT[\s\S]*?Every code snippet must be in a fenced block with the correct language tag\./, 
-             'Return a concise Markdown report with sections: Bugs, Security, Performance, Code Quality. Use bullet points. Include file paths and code snippets only for critical issues.')
-    .replace(/\n{3,}/g, '\n\n'); // Collapse excess blank lines
+    let adapted = systemInstruction;
+
+    // Strip the REPORT FORMAT section for small/medium context models
+    if (profile.tier === 'small' || profile.tier === 'medium') {
+      adapted = adapted
+        .replace(/REPORT FORMAT[\s\S]*?Every code snippet must be in a fenced block with the correct language tag\./,
+                 'Return a concise Markdown report with sections: Bugs, Security, Performance, Code Quality. Use bullet points. Include file paths and code snippets only for critical issues.')
+        .replace(/\n{3,}/g, '\n\n'); // Collapse excess blank lines
+    }
+
+    // If a precise maxChars is defined, ensure adapted instruction fits
+    if (profile.maxChars && adapted.length > profile.maxChars * 0.1) { // Reserve 10% for instruction
+      adapted = adapted.substring(0, profile.maxChars * 0.1);
+      console.warn(`System instruction truncated for ${model} to fit maxChars.`);
+    }
+    return adapted;
 
   if (profile.tier === 'small') {
     // Further compress: strip the CRITICAL RULES block header, keep only the DO NOTs
@@ -720,7 +726,11 @@ function smartTruncateCodebase(codebasePayload, systemInstruction, maxInputChars
   if (!maxInputChars) return codebasePayload;
 
   const sysLen = systemInstruction ? systemInstruction.length : 0;
-  const BUFFER = Math.max(Math.floor(maxInputChars * 0.08), 3000);
+  // Calcular el tamaño del buffer como un porcentaje de maxInputChars, con un mínimo de 3000 chars.
+  // Esto asegura que el buffer es proporcional al límite de contexto del modelo.
+  const BUFFER_PERCENTAGE = 0.08; // 8%
+  const MIN_BUFFER_CHARS = 3000;
+  const BUFFER = Math.max(Math.floor(maxInputChars * BUFFER_PERCENTAGE), MIN_BUFFER_CHARS);
   const available = maxInputChars - sysLen - BUFFER;
 
   if (available <= 0) {
@@ -941,19 +951,40 @@ function extractJSON(raw) {
 }
 
 /**
- * Detects infinite-loop responses: the same sentence repeated many times.
+ * Detects infinite-loop responses or repetitive structural output (e.g., repeating Markdown tables).
  * Returns true if the model is clearly stuck in a loop.
  */
 function isLoopingResponse(text) {
   if (!text || text.length < 200) return false;
+
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length < 5) return false;
-  // Count how many times the most frequent line appears
+
+  // 1. Detección de repetición de líneas exactas (como antes)
   const freq = {};
   for (const line of lines) { freq[line] = (freq[line] || 0) + 1; }
   const maxFreq = Math.max(...Object.values(freq));
-  // If any single line repeats more than 5 times and covers >40% of lines → loop
-  return maxFreq > 5 && (maxFreq / lines.length) > 0.4;
+  if (maxFreq > 5 && (maxFreq / lines.length) > 0.4) {
+    return true; // Bucle de líneas exactas
+  }
+
+  // 2. Detección de patrones repetitivos en estructuras Markdown (ej. tablas)
+  // Simplificación: si encontramos un patrón de líneas que se repiten en bloques
+  // y cubren una parte significativa del texto, es un bucle estructural.
+  for (let i = 0; i < lines.length - 2; i++) {
+    const block = lines.slice(i, i + 3).join('\n'); // Bloque de 3 líneas
+    let count = 0;
+    for (let j = i; j < lines.length - 2; j++) {
+      if (lines.slice(j, j + 3).join('\n') === block) {
+        count++;
+      }
+    }
+    if (count > 3 && (count * 3 / lines.length) > 0.3) {
+      return true; // Bucle de bloques de líneas
+    }
+  }
+
+  return false;
 }
 
 async function callWithFallback(chain, mode, systemInstruction, prompt, enableGrounding = false) {

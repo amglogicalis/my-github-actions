@@ -468,17 +468,106 @@ async function callGeminiModel(apiKey, model, mode, systemInstruction, prompt, e
   throw new Error('Gemini API returned an empty or invalid content parts.');
 }
 
-// Trunca el prompt de usuario si excede el límite del modelo, preservando el sistema intacto.
-// La IA siempre recibe instrucciones completas; solo el codebase puede ser recortado.
-function truncatePrompt(prompt, systemInstruction, maxInputChars) {
-  if (!maxInputChars) return prompt;
-  // Reservamos espacio para el systemInstruction + separador + margen de seguridad
+// =============================================================================
+// PASO 5: Smart Token Management — per-model profiles, file-level truncation,
+//         and adaptive system instruction compression.
+// =============================================================================
+
+/**
+ * Context tier per model — controls instruction verbosity and truncation budget.
+ * Tiers: 'large' ≥200K chars | 'medium' 50K-199K | 'small' <50K
+ */
+const MODEL_PROFILES = {
+  // Gemini
+  'gemini-2.5-flash':         { tier: 'large'  },
+  'gemini-flash-lite-latest':  { tier: 'large'  },
+  'gemini-3.1-flash-lite':     { tier: 'large'  },
+  'gemma-4-31b-it':            { tier: 'large'  },
+  // Cohere
+  'command-a-plus-05-2026':    { tier: 'large'  },
+  'command-r-plus-08-2024':    { tier: 'large'  },
+  'command-a-03-2025':         { tier: 'large'  },
+  'command-r-08-2024':         { tier: 'large'  },
+  // Groq — conservative, small context on free tier
+  'llama-3.3-70b-versatile':                    { tier: 'small'  },
+  'meta-llama/llama-4-scout-17b-16e-instruct':  { tier: 'medium' },
+  'qwen/qwen3.6-27b':                           { tier: 'medium' },
+  'llama-3.1-8b-instant':                       { tier: 'small'  },
+  // OpenRouter
+  'cohere/north-mini-code:free':             { tier: 'medium' },
+  'qwen/qwen3-coder:free':                   { tier: 'medium' },
+  'google/gemma-4-31b-it:free':              { tier: 'medium' },
+  'meta-llama/llama-3.3-70b-instruct:free':  { tier: 'medium' },
+  'google/gemini-3.1-flash-lite':            { tier: 'large'  },
+};
+
+/**
+ * Adapts the system instruction to the model's context tier.
+ * For small/medium models, removes the verbose REPORT FORMAT block
+ * to save ~800 chars and leave more room for codebase content.
+ */
+function adaptSystemInstruction(systemInstruction, model) {
+  const profile = MODEL_PROFILES[model] || { tier: 'medium' };
+  if (profile.tier === 'large') return systemInstruction;
+
+  // Strip the REPORT FORMAT section for small/medium context models
+  let adapted = systemInstruction
+    .replace(/REPORT FORMAT[\s\S]*?Every code snippet must be in a fenced block with the correct language tag\./, 
+             'Return a concise Markdown report with sections: Bugs, Security, Performance, Code Quality. Use bullet points. Include file paths and code snippets only for critical issues.')
+    .replace(/\n{3,}/g, '\n\n'); // Collapse excess blank lines
+
+  if (profile.tier === 'small') {
+    // Further compress: strip the CRITICAL RULES block header, keep only the DO NOTs
+    adapted = adapted
+      .replace(/CRITICAL RULES — follow without exception:\n/, '')
+      .replace(/YOUR TASK:\n/, '')
+      .trim();
+  }
+
+  return adapted;
+}
+
+/**
+ * Smart codebase truncation: cuts at file boundaries instead of mid-content,
+ * and appends a manifest of omitted files so the model knows what was excluded.
+ * Uses a dynamic buffer: 8% of maxInputChars or 3000 chars, whichever is larger.
+ * Approximation: 1 token ≈ 3.5 chars (conservative for code).
+ */
+function smartTruncateCodebase(codebasePayload, systemInstruction, maxInputChars) {
+  if (!maxInputChars) return codebasePayload;
+
   const sysLen = systemInstruction ? systemInstruction.length : 0;
-  const BUFFER = 2000; // chars de margen para metadatos y estructura JSON del request
+  const BUFFER = Math.max(Math.floor(maxInputChars * 0.08), 3000);
   const available = maxInputChars - sysLen - BUFFER;
-  if (available <= 0 || prompt.length <= available) return prompt;
-  const truncated = prompt.substring(0, available);
-  return truncated + '\n\n⚠️  [Contenido del codebase truncado para ajustarse al límite de contexto del modelo. Los archivos más importantes están incluidos arriba.]';
+
+  if (available <= 0) {
+    return '⚠️  [Codebase omitido: el system instruction supera el límite de contexto del modelo.]';
+  }
+  if (codebasePayload.length <= available) return codebasePayload;
+
+  // Split into individual file blocks
+  const FILE_SEPARATOR = '--- FILE: ';
+  const blocks = codebasePayload.split(FILE_SEPARATOR).filter(Boolean);
+
+  let result = '';
+  const omittedFiles = [];
+
+  for (const block of blocks) {
+    const fileBlock = FILE_SEPARATOR + block;
+    if (result.length + fileBlock.length <= available) {
+      result += fileBlock;
+    } else {
+      // Extract just the filename from the block header (first line)
+      const filename = block.split('\n')[0].trim();
+      omittedFiles.push(filename);
+    }
+  }
+
+  if (omittedFiles.length > 0) {
+    result += `\n\n⚠️  [TRUNCATED: The following ${omittedFiles.length} file(s) were omitted due to context limits: ${omittedFiles.join(', ')}. Focus analysis on the files provided above.]`;
+  }
+
+  return result;
 }
 
 // Ayudante ultra-defensivo para extraer texto de la respuesta de cualquier IA (String, Array o Estructura Compleja)
@@ -511,15 +600,23 @@ function extractTextFromContent(content) {
 async function callProviderModel(entry, mode, systemInstruction, prompt, enableGrounding = false) {
   const { provider, model, apiKey, maxInputChars } = entry;
 
-  // Truncar prompt si el modelo tiene un límite de contexto definido
-  const safePrompt = truncatePrompt(prompt, systemInstruction, maxInputChars);
+  // Adapt system instruction verbosity to this model's context tier
+  const adaptedInstruction = adaptSystemInstruction(systemInstruction, model);
+  if (adaptedInstruction.length < systemInstruction.length) {
+    const saved = systemInstruction.length - adaptedInstruction.length;
+    const profile = MODEL_PROFILES[model] || { tier: 'medium' };
+    console.log(`    🔧 System instruction comprimida para modelo ${profile.tier.toUpperCase()} (ahorro: ${saved} chars)`);
+  }
+
+  // Smart file-boundary truncation of the codebase payload
+  const safePrompt = smartTruncateCodebase(prompt, adaptedInstruction, maxInputChars);
   if (safePrompt.length < prompt.length) {
-    console.log(`    ✂️  Prompt truncado de ${prompt.length} a ${safePrompt.length} chars para [${provider.toUpperCase()}] ${model}`);
+    console.log(`    ✂️  Codebase truncado en límite de archivo: ${prompt.length} → ${safePrompt.length} chars para [${provider.toUpperCase()}] ${model}`);
   }
 
   // 1. Google Gemini
   if (provider === 'gemini') {
-    return await callGeminiModel(apiKey, model, mode, systemInstruction, safePrompt, enableGrounding);
+    return await callGeminiModel(apiKey, model, mode, adaptedInstruction, safePrompt, enableGrounding);
   }
 
   // 2. Cohere API V2
@@ -528,7 +625,7 @@ async function callProviderModel(entry, mode, systemInstruction, prompt, enableG
     const body = {
       model: model,
       messages: [
-        { role: 'system', content: systemInstruction },
+        { role: 'system', content: adaptedInstruction },
         { role: 'user', content: safePrompt }
       ]
     };
@@ -575,7 +672,7 @@ async function callProviderModel(entry, mode, systemInstruction, prompt, enableG
   const body = {
     model: model,
     messages: [
-      { role: 'system', content: systemInstruction },
+      { role: 'system', content: adaptedInstruction },
       { role: 'user', content: safePrompt }
     ]
   };

@@ -107,30 +107,37 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Este paso restaura el archivo de conocimiento acumulativo de Zenon (.zenon_cache.json)
+      # desde el almacenamiento interno de GitHub (si existe una ejecución previa).
+      # Al finalizar el job, GitHub guarda automáticamente el archivo actualizado para la próxima ejecución.
+      # Resultado: Zenon aprende de forma incremental sin repetir análisis ya realizados, ahorrando tokens.
+      - name: Restore Zenon Knowledge Cache
+        uses: actions/cache@v4
+        with:
+          path: .zenon_cache.json
+          key: zenon-knowledge-cache-${{ github.run_id }}
+          restore-keys: |
+            zenon-knowledge-cache-
+
       - name: Run Zenon AI
-          uses: amglogicalis/Zenon@main
-          with:
-            zenon-api-key: ${{ secrets.ZENON_API_KEY }}
-            groq-api-key: ${{ secrets.GROQ_API_KEY }}
-            cohere-api-key: ${{ secrets.COHERE_API_KEY }}
-            openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
-            mode: ${{ github.event.inputs.mode || 'assist' }}
-            objective-file: ${{ github.event.inputs.objective-file || 'zenon_objective.md' }}
+        uses: amglogicalis/Zenon@main
+        with:
+          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          cohere-api-key: ${{ secrets.COHERE_API_KEY }}
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          mode: ${{ github.event.inputs.mode || 'assist' }}
+          objective-file: ${{ github.event.inputs.objective-file || 'zenon_objective.md' }}
 ```
 
-> [!TIP]
-> **Persistencia de la Caché en GitHub Actions (Optimización de tokens):**
-> Por defecto, los runners de GitHub Actions se destruyen después de cada ejecución del workflow. Para persistir el archivo de conocimiento acumulativo `.zenon_cache.json` entre ejecuciones y beneficiarte del entrenamiento incremental en CI, te recomendamos añadir un paso de caché de GitHub justo antes del paso de Zenon:
+> [!IMPORTANT]
+> **¿Cómo funciona la caché de GitHub Actions?**
+> El paso `actions/cache` es una feature oficial y de producción de GitHub. Su mecanismo es el siguiente:
+> 1. **Al iniciar el job:** GitHub busca una caché guardada con la clave `zenon-knowledge-cache-` y, si la encuentra, restaura el archivo `.zenon_cache.json` directamente en el workspace antes de que Zenon arranque.
+> 2. **Durante la ejecución:** Zenon lee ese archivo, usa el conocimiento previo acumulado, realiza el análisis incremental y actualiza el archivo con lo aprendido en esta ejecución.
+> 3. **Al finalizar el job:** GitHub guarda automáticamente el `.zenon_cache.json` actualizado en su almacenamiento interno de caché bajo una nueva clave (`zenon-knowledge-cache-<run_id>`), listo para ser restaurado en la siguiente ejecución.
 >
-> ```yaml
->       - name: Restore Zenon Cache
->         uses: actions/cache@v4
->         with:
->           path: .zenon_cache.json
->           key: zenon-cache-${{ github.run_id }}
->           restore-keys: |
->             zenon-cache-
-> ```
+> De esta forma, **cada ejecución de Zenon es más inteligente que la anterior** y consume menos tokens de API, sin necesidad de commitear el archivo de caché a tu repositorio ni de exponerlo públicamente.
 
 ---
 

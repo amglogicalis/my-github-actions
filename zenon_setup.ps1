@@ -9,16 +9,20 @@
 $ErrorActionPreference = "Stop"
 
 # Leer valores de la pipeline si existen (útil para ejecuciones no interactivas/automatizadas)
-$PipelineInputs = @($input)
-$ChoiceInput = $null
-$ProviderChoice = $null
+$PipelineInputs = @($input) | Where-Object { $_ -ne $null -and $_.ToString().Trim() -ne "" }
+$script:PipelineIndex = 0
 
-if ($PipelineInputs.Count -gt 0 -and $PipelineInputs[0] -ne $null -and $PipelineInputs[0].ToString().Trim() -ne "") {
-    $ChoiceInput = $PipelineInputs[0].ToString()
+function Get-NextInput {
+    if ($script:PipelineIndex -lt $script:PipelineInputs.Count) {
+        $val = $script:PipelineInputs[$script:PipelineIndex].ToString()
+        $script:PipelineIndex++
+        return $val
+    }
+    return $null
 }
-if ($PipelineInputs.Count -gt 1 -and $PipelineInputs[1] -ne $null -and $PipelineInputs[1].ToString().Trim() -ne "") {
-    $ProviderChoice = $PipelineInputs[1].ToString()
-}
+
+$ChoiceInput = Get-NextInput
+$ProviderChoice = Get-NextInput
 
 Write-Host "=========================================================" -ForegroundColor Magenta
 Write-Host "        ⚡ Bienvenido al Asistente de Zenon Setup ⚡" -ForegroundColor Magenta
@@ -480,10 +484,7 @@ Write-Host "=========================================================" -Foregrou
 
 # 7. Preguntar si se desean subir los cambios a GitHub
 Write-Host ""
-$GitChoiceInput = $null
-if ($PipelineInputs.Count -gt 2 -and $PipelineInputs[2] -ne $null -and $PipelineInputs[2].ToString().Trim() -ne "") {
-    $GitChoiceInput = $PipelineInputs[2].ToString()
-}
+$GitChoiceInput = Get-NextInput
 if (-not $GitChoiceInput) {
     $GitChoiceInput = Read-Host "Quieres subir los cambios a github? [s/N]"
 }
@@ -506,28 +507,66 @@ if ($GitChoiceInput.ToLower().Trim() -eq "s" -or $GitChoiceInput.ToLower().Trim(
     }
 }
 
-# 8. Preguntar si se desean configurar los secrets desde aquí
+# 8. Preguntar si se desean configurar los secrets/variables desde aquí
 Write-Host ""
-$SecretChoiceInput = $null
-if ($PipelineInputs.Count -gt 3 -and $PipelineInputs[3] -ne $null -and $PipelineInputs[3].ToString().Trim() -ne "") {
-    $SecretChoiceInput = $PipelineInputs[3].ToString()
-}
+$SecretChoiceInput = Get-NextInput
 if (-not $SecretChoiceInput) {
-    $SecretChoiceInput = Read-Host "Quieres configurar desde aqui los secrets? [s/N]"
+    $SecretChoiceInput = Read-Host "Quieres configurar desde aqui los secrets y variables? [s/N]"
 }
 if (-not $SecretChoiceInput) { $SecretChoiceInput = "n" }
 
 if ($SecretChoiceInput.ToLower().Trim() -eq "s" -or $SecretChoiceInput.ToLower().Trim() -eq "si" -or $SecretChoiceInput.ToLower().Trim() -eq "y" -or $SecretChoiceInput.ToLower().Trim() -eq "yes") {
-    $GeminiKeyInput = $null
-    if ($PipelineInputs.Count -gt 4 -and $PipelineInputs[4] -ne $null -and $PipelineInputs[4].ToString().Trim() -ne "") {
-        $GeminiKeyInput = $PipelineInputs[4].ToString()
-    }
-    if (-not $GeminiKeyInput) {
-        $GeminiKeyInput = Read-Host "Pega la API Key de Gemini (ZENON_API_KEY)"
-    }
-    if ($GeminiKeyInput -and $GeminiKeyInput.Trim() -ne "") {
-        Write-Host "Configurando el secreto ZENON_API_KEY en GitHub..." -ForegroundColor Yellow
-        if (Get-Command gh -ErrorAction SilentlyContinue) {
+    if (Get-Command gh -ErrorAction SilentlyContinue) {
+        # 8a. Configurar variables de auto-ejecución si aplica
+        # Reviewer Auto Execution (sólo si se seleccionó la opción 1)
+        if ($SelectedOptions -contains 1) {
+            $AutoReviewChoice = Get-NextInput
+            if (-not $AutoReviewChoice) {
+                $AutoReviewChoice = Read-Host "Quieres que Zenon Reviewer se ejecute automaticamente en cada pull request o commit? [S/n]"
+            }
+            if (-not $AutoReviewChoice) { $AutoReviewChoice = "s" }
+            
+            $AutoReviewVal = "false"
+            if ($AutoReviewChoice.ToLower().Trim() -eq "n" -or $AutoReviewChoice.ToLower().Trim() -eq "no") {
+                $AutoReviewVal = "true"
+            }
+            Write-Host "Configurando variable ZENON_DISABLE_AUTO_REVIEW a $AutoReviewVal en GitHub..." -ForegroundColor Yellow
+            $AutoReviewVal | gh variable set ZENON_DISABLE_AUTO_REVIEW
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ Variable ZENON_DISABLE_AUTO_REVIEW configurada correctamente." -ForegroundColor Green
+            } else {
+                Write-Host "❌ Error al configurar la variable ZENON_DISABLE_AUTO_REVIEW." -ForegroundColor Red
+            }
+        }
+
+        # Updater Auto Execution (sólo si se seleccionó la opción 4)
+        if ($SelectedOptions -contains 4) {
+            $AutoUpdateChoice = Get-NextInput
+            if (-not $AutoUpdateChoice) {
+                $AutoUpdateChoice = Read-Host "Quieres que Zenon Updater se ejecute automaticamente en cada commit? [S/n]"
+            }
+            if (-not $AutoUpdateChoice) { $AutoUpdateChoice = "s" }
+            
+            $AutoUpdateVal = "false"
+            if ($AutoUpdateChoice.ToLower().Trim() -eq "n" -or $AutoUpdateChoice.ToLower().Trim() -eq "no") {
+                $AutoUpdateVal = "true"
+            }
+            Write-Host "Configurando variable ZENON_DISABLE_AUTO_UPDATE a $AutoUpdateVal en GitHub..." -ForegroundColor Yellow
+            $AutoUpdateVal | gh variable set ZENON_DISABLE_AUTO_UPDATE
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ Variable ZENON_DISABLE_AUTO_UPDATE configurada correctamente." -ForegroundColor Green
+            } else {
+                Write-Host "❌ Error al configurar la variable ZENON_DISABLE_AUTO_UPDATE." -ForegroundColor Red
+            }
+        }
+
+        # 8c. API Key de Gemini
+        $GeminiKeyInput = Get-NextInput
+        if (-not $GeminiKeyInput) {
+            $GeminiKeyInput = Read-Host "Pega la API Key de Gemini (ZENON_API_KEY)"
+        }
+        if ($GeminiKeyInput -and $GeminiKeyInput.Trim() -ne "") {
+            Write-Host "Configurando el secreto ZENON_API_KEY en GitHub..." -ForegroundColor Yellow
             $GeminiKeyInput.Trim() | gh secret set ZENON_API_KEY
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "✅ Secreto ZENON_API_KEY subido correctamente." -ForegroundColor Green
@@ -535,11 +574,12 @@ if ($SecretChoiceInput.ToLower().Trim() -eq "s" -or $SecretChoiceInput.ToLower()
                 Write-Host "❌ Error al ejecutar 'gh secret set'. Asegúrate de haber iniciado sesión con 'gh auth login'." -ForegroundColor Red
             }
         } else {
-            Write-Host "❌ El comando 'gh' (GitHub CLI) no está instalado en el sistema." -ForegroundColor Red
-            Write-Host "Instálalo y ejecuta 'gh auth login' antes de configurar secretos desde consola." -ForegroundColor Yellow
+            Write-Host "No se ha introducido ninguna clave." -ForegroundColor Yellow
         }
+
     } else {
-        Write-Host "No se ha introducido ninguna clave." -ForegroundColor Yellow
+        Write-Host "❌ El comando 'gh' (GitHub CLI) no está instalado en el sistema." -ForegroundColor Red
+        Write-Host "Instálalo y ejecuta 'gh auth login' antes de configurar secretos y variables desde consola." -ForegroundColor Yellow
     }
 }
 

@@ -699,7 +699,7 @@ Puedes configurar todo el ecosistema de Zenon en cualquier repositorio o PC de f
 
 ### ⚡ Importación y Configuración Automática (Recomendado)
 
-Disponemos de asistentes interactivos de configuración en PowerShell (`zenon_setup.ps1`) para Windows y en Bash (`zenon_setup.sh`) para Linux/macOS. Estos scripts te preguntarán qué módulos deseas importar, cuántos proveedores de IA configurar y crearán automáticamente todos los archivos de workflow en `.github/workflows/` junto con sus plantillas de configuración asociadas.
+Disponemos de asistentes interactivos de configuración en PowerShell (`zenon_setup.ps1`) para Windows y en Bash (`zenon_setup.sh`) para Linux/macOS. Estos scripts te preguntarán qué módulos deseas importar, cuántos proveedores de IA configurar y crearán automáticamente todos los archivos de workflow en `.github/workflows/` junto con sus plantillas de configuración asociadas. Además, te ofrecerán la posibilidad de subir directamente los cambios a GitHub (commit & push automático) y configurar tus secretos de API (`ZENON_API_KEY`) y variables de control (`ZENON_DISABLE_AUTO_REVIEW`, `ZENON_DISABLE_AUTO_UPDATE`) de forma automática en tu repositorio usando la CLI de GitHub (`gh`).
 
 #### En Windows (PowerShell)
 Puedes descargar y ejecutar el script interactivamente en la raíz de tu repositorio objetivo con el siguiente comando en PowerShell:

@@ -482,31 +482,74 @@ if [ "$git_choice" = "s" ] || [ "$git_choice" = "y" ] || [ "$git_choice" = "si" 
     fi
 fi
 
-# 8. Preguntar si se desean configurar los secrets desde aquí
+# 8. Preguntar si se desean configurar los secrets/variables desde aquí
 echo ""
-read -p "Quieres configurar desde aqui los secrets? [s/N]: " secret_choice
+read -p "Quieres configurar desde aqui los secrets y variables? [s/N]: " secret_choice
 if [ -z "$secret_choice" ]; then
     secret_choice="n"
 fi
 secret_choice=$(echo "$secret_choice" | tr -d '\r' | tr '[:upper:]' '[:lower:]' | xargs)
 
 if [ "$secret_choice" = "s" ] || [ "$secret_choice" = "y" ] || [ "$secret_choice" = "si" ] || [ "$secret_choice" = "yes" ]; then
-    read -p "Pega la API Key de Gemini (ZENON_API_KEY): " gemini_key
-    gemini_key=$(echo "$gemini_key" | tr -d '\r' | xargs)
-    if [ -n "$gemini_key" ]; then
-        echo -e "${YELLOW}Configurando el secreto ZENON_API_KEY en GitHub...${NC}"
-        if command -v gh &> /dev/null; then
+    if command -v gh &> /dev/null; then
+        # 8a. Reviewer Auto Execution (sólo si se seleccionó la opción 1)
+        contains_element 1 "${selected_options[@]}" && has_reviewer=true || has_reviewer=false
+        if [ "$has_reviewer" = true ]; then
+            read -p "Quieres que Zenon Reviewer se ejecute automaticamente en cada pull request o commit? [S/n]: " auto_review_choice
+            if [ -z "$auto_review_choice" ]; then
+                auto_review_choice="s"
+            fi
+            auto_review_choice=$(echo "$auto_review_choice" | tr -d '\r' | tr '[:upper:]' '[:lower:]' | xargs)
+            
+            auto_review_val="false"
+            if [ "$auto_review_choice" = "n" ] || [ "$auto_review_choice" = "no" ]; then
+                auto_review_val="true"
+            fi
+            echo -e "${YELLOW}Configurando variable ZENON_DISABLE_AUTO_REVIEW a $auto_review_val en GitHub...${NC}"
+            if echo "$auto_review_val" | gh variable set ZENON_DISABLE_AUTO_REVIEW; then
+                echo -e "${GREEN}✅ Variable ZENON_DISABLE_AUTO_REVIEW configurada correctamente.${NC}"
+            else
+                echo -e "${RED}❌ Error al configurar la variable ZENON_DISABLE_AUTO_REVIEW.${NC}"
+            fi
+        fi
+
+        # 8b. Updater Auto Execution (sólo si se seleccionó la opción 4)
+        contains_element 4 "${selected_options[@]}" && has_updater=true || has_updater=false
+        if [ "$has_updater" = true ]; then
+            read -p "Quieres que Zenon Updater se ejecute automaticamente en cada commit? [S/n]: " auto_update_choice
+            if [ -z "$auto_update_choice" ]; then
+                auto_update_choice="s"
+            fi
+            auto_update_choice=$(echo "$auto_update_choice" | tr -d '\r' | tr '[:upper:]' '[:lower:]' | xargs)
+            
+            auto_update_val="false"
+            if [ "$auto_update_choice" = "n" ] || [ "$auto_update_choice" = "no" ]; then
+                auto_update_val="true"
+            fi
+            echo -e "${YELLOW}Configurando variable ZENON_DISABLE_AUTO_UPDATE a $auto_update_val en GitHub...${NC}"
+            if echo "$auto_update_val" | gh variable set ZENON_DISABLE_AUTO_UPDATE; then
+                echo -e "${GREEN}✅ Variable ZENON_DISABLE_AUTO_UPDATE configurada correctamente.${NC}"
+            else
+                echo -e "${RED}❌ Error al configurar la variable ZENON_DISABLE_AUTO_UPDATE.${NC}"
+            fi
+        fi
+
+        # 8c. API Key de Gemini
+        read -p "Pega la API Key de Gemini (ZENON_API_KEY): " gemini_key
+        gemini_key=$(echo "$gemini_key" | tr -d '\r' | xargs)
+        if [ -n "$gemini_key" ]; then
+            echo -e "${YELLOW}Configurando el secreto ZENON_API_KEY en GitHub...${NC}"
             if echo "$gemini_key" | gh secret set ZENON_API_KEY; then
                 echo -e "${GREEN}✅ Secreto ZENON_API_KEY subido correctamente.${NC}"
             else
                 echo -e "${RED}❌ Error al ejecutar 'gh secret set'. Asegúrate de haber iniciado sesión con 'gh auth login'.${NC}"
             fi
         else
-            echo -e "${RED}❌ El comando 'gh' (GitHub CLI) no está instalado en el sistema.${NC}"
-            echo -e "${YELLOW}Instálalo y ejecuta 'gh auth login' antes de configurar secretos desde consola.${NC}"
+            echo -e "${YELLOW}No se ha introducido ninguna clave.${NC}"
         fi
     else
-        echo -e "${YELLOW}No se ha introducido ninguna clave.${NC}"
+        echo -e "${RED}❌ El comando 'gh' (GitHub CLI) no está instalado en el sistema.${NC}"
+        echo -e "${YELLOW}Instálalo y ejecuta 'gh auth login' antes de configurar secretos y variables desde consola.${NC}"
     fi
 fi
 

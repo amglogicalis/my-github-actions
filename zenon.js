@@ -1953,6 +1953,75 @@ Please perform a deep technical code review of this diff.`;
     }
   }
 
+// Helper to search codebase files for matching keywords to provide live context
+function searchCodebaseForQuery(query, files) {
+  const stopwords = new Set([
+    'como', 'funciona', 'que', 'es', 'en', 'este', 'repo', 'repositorio', 'para', 'sirve', 
+    'de', 'la', 'el', 'los', 'las', 'un', 'una', 'y', 'o', 'a', 'con', 'por', 'lo', 'duda',
+    'pregunta', 'explicar', 'explicacion', 'sobre', 'del', 'al', 'nos', 'se', 'su', 'sus'
+  ]);
+  
+  const words = query.toLowerCase()
+    .replace(/[^a-z0-9áéíóúñ_\-\/]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !stopwords.has(w));
+
+  if (words.length === 0) return '';
+
+  console.log(`🔍 Búsqueda en caliente de archivos para las palabras clave: ${words.join(', ')}`);
+
+  let contextText = '';
+  let matchedFilesCount = 0;
+  const maxMatchedFiles = 8;
+  const maxBytesPerFile = 6144; // Max 6KB per file to avoid context bloat
+
+  for (const file of files) {
+    if (!fs.existsSync(file)) continue;
+    if (matchedFilesCount >= maxMatchedFiles) break;
+
+    const lowerFile = file.toLowerCase();
+    let content = null;
+    let isMatch = false;
+
+    if (words.some(word => lowerFile.includes(word))) {
+      isMatch = true;
+    } else {
+      try {
+        content = fs.readFileSync(file, 'utf8');
+        const lowerContent = content.toLowerCase();
+        if (words.some(word => lowerContent.includes(word))) {
+          isMatch = true;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+
+    if (isMatch) {
+      if (content === null) {
+        try {
+          content = fs.readFileSync(file, 'utf8');
+        } catch (e) {
+          continue;
+        }
+      }
+
+      let snippet = content;
+      if (content.length > maxBytesPerFile) {
+        snippet = content.substring(0, maxBytesPerFile) + '\n\n... [TRUNCATED - CONTENIDO RESTANTE OMITIDO] ...';
+      }
+
+      contextText += `--- ARCHIVO ENCONTRADO: ${file}\n${snippet}\n--- FIN DE ARCHIVO ---\n\n`;
+      matchedFilesCount++;
+    }
+  }
+
+  if (contextText) {
+    return `=== LIVE CONTEXT FROM CODEBASE (ARCHIVOS ENCONTRADOS QUE ENCAJAN CON TU PREGUNTA) ===\n${contextText}========================================================================\n\n`;
+  }
+  return '';
+}
+
   // =============================================================================
   // PASO 11: Modo Helper — Ejecución del Asistente de Repositorio
   // =============================================================================
@@ -1972,10 +2041,12 @@ Avoid introductory greetings, pleasantries, or concluding conversational filler.
         helperSystemInstruction += `\n\n=== CONTEXTO DEL REPOSITORIO (CONOCIMIENTO CACHÉ) ===\n${cachedKnowledge}\n======================================================`;
       }
 
-      const helperUserPrompt = `=== USER QUERY ===
+      const liveContext = searchCodebaseForQuery(helperQuery, files);
+
+      const helperUserPrompt = `${liveContext}=== USER QUERY ===
 ${helperQuery}
 
-Please answer the user query based on the codebase knowledge base provided.`;
+Please answer the user query based on the codebase knowledge base and the live context files provided. If the cache knowledge base is outdated or does not contain specific information about the query, prioritize the live context files to give an accurate, up-to-date, and correct answer. Do not hallucinate or make up details not present in the files.`;
 
       console.log('🤖 Zenon is thinking...');
       const helperResult = await callWithFallback(chain, 'assist', helperSystemInstruction, helperUserPrompt);

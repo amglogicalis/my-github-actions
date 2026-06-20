@@ -693,9 +693,34 @@ TOKEN_GH=ghp_...
 
 ---
 
-## 💻 Cómo Exportar y Traer Zenon a otros PCs
+## 💻 Cómo Exportar y Traer Zenon a otros PCs o Repositorios
 
-Puedes usar todo el ecosistema de Zenon en otros ordenadores o proyectos de dos formas: **instalación local en terminal** o **integración remota como acción de GitHub**.
+Puedes configurar todo el ecosistema de Zenon en cualquier repositorio o PC de forma automatizada mediante los scripts de configuración, o de forma manual siguiendo los pasos detallados a continuación.
+
+### ⚡ Importación y Configuración Automática (Recomendado)
+
+Disponemos de asistentes interactivos de configuración en PowerShell (`zenon_setup.ps1`) para Windows y en Bash (`zenon_setup.sh`) para Linux/macOS. Estos scripts te preguntarán qué módulos deseas importar, cuántos proveedores de IA configurar y crearán automáticamente todos los archivos de workflow en `.github/workflows/` junto con sus plantillas de configuración asociadas.
+
+#### En Windows (PowerShell)
+Puedes descargar y ejecutar el script interactivamente en la raíz de tu repositorio objetivo con el siguiente comando en PowerShell:
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/amglogicalis/Zenon/main/zenon_setup.ps1" -OutFile "zenon_setup.ps1"
+.\zenon_setup.ps1
+# O ejecútalo con parámetros para una importación automática (ej. módulos 1, 2 y 7, y multiproveedor):
+# @("1,2,7", "2") | .\zenon_setup.ps1
+```
+
+#### En Linux / macOS / Git Bash (Bash)
+Puedes descargar y ejecutar el asistente de Bash en tu terminal:
+```bash
+curl -fsSL -o zenon_setup.sh https://raw.githubusercontent.com/amglogicalis/Zenon/main/zenon_setup.sh
+chmod +x zenon_setup.sh
+./zenon_setup.sh
+# O de forma desatendida/no interactiva:
+# printf "1,2,7\n2\n" | ./zenon_setup.sh
+```
+
+---
 
 ### A. Para Uso Local en la Terminal (Cualquier PC)
 

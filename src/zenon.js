@@ -2664,7 +2664,7 @@ RULES:
       let reportMd = '';
       if (isCI) {
         reportMd += `### <img src="${LOGO_BASE_URL}/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — DevOpser\n\n`;
-        reportMd += `#### <img src="${LOGO_BASE_URL}/logo_zenon_devopser.png" height="20" align="absmiddle" /> DevOps Execution Report\n\n`;
+        reportMd += `#### <img src="${LOGO_BASE_URL}/logo_zenon_DevOpser.png" height="20" align="absmiddle" /> DevOps Execution Report\n\n`;
       } else {
         reportMd += `# Zenon Polis — DevOpser Report\n\n`;
         reportMd += `## DevOps Execution Report\n\n`;
@@ -2712,15 +2712,15 @@ Write in structured Markdown. Be direct and technical. Do not include greetings 
       }
 
       // Write report
+      const cleanReport = reportMd
+        .replace(/### <img[^>]*> /g, '# ')
+        .replace(/#### <img[^>]*> /g, '## ');
+      fs.writeFileSync('zenon_report.md', cleanReport, 'utf8');
+      console.log('\n📊 Report written to zenon_report.md');
+
       if (isCI && process.env.GITHUB_STEP_SUMMARY) {
         fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, reportMd);
-        console.log('\n📊 Report published to GitHub Actions Job Summary.');
-      } else {
-        const localReport = reportMd
-          .replace(/### <img[^>]*> /g, '# ')
-          .replace(/#### <img[^>]*> /g, '## ');
-        fs.writeFileSync('zenon_report.md', localReport, 'utf8');
-        console.log('\n📊 Report written to zenon_report.md');
+        console.log('📊 Report published to GitHub Actions Job Summary.');
       }
       console.log(reportMd.slice(0, 1500));
 

@@ -34,8 +34,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .zenon_cache.json
-          key: zenon-knowledge-cache-${{ github.run_id }}
+          key: zenon-knowledge-cache-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
+            zenon-knowledge-cache-${{ github.ref_name }}-
             zenon-knowledge-cache-
 
       - name: Run Zenon Reviewer Action

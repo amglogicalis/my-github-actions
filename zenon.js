@@ -490,6 +490,7 @@ function getGitDiff(range, exclude) {
       return runGit(pushArgs);
     } catch (e) {
       try {
+        console.warn('  ⚠️ HEAD~1 not available (e.g. single commit). Fetching initial commit diff using show HEAD...');
         return runGit(['show', 'HEAD']);
       } catch (err) {
         throw new Error(`Failed to get diff for HEAD~1 in CI: ${err.message}`);
@@ -515,6 +516,7 @@ function getGitDiff(range, exclude) {
       return runGit(lastCommitArgs);
     } catch (e) {
       try {
+        console.warn('  ⚠️ HEAD~1 not available (e.g. single commit). Fetching initial commit diff using show HEAD...');
         return runGit(['show', 'HEAD']);
       } catch (err) {
         throw new Error(`Failed to get local git diff: ${err.message}`);

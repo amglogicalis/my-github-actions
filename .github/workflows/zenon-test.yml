@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Zenon Mode — "assist": analyze & report | "correct": auto-fix & commit | "objective": implement a goal'
+        description: 'Zenon Mode — "assist": analyze & report | "correct": auto-fix & commit | "objective": implement a goal | "trainer": train Zenon on a topic'
         required: true
         default: 'assist'
         type: choice
@@ -15,10 +15,15 @@ on:
           - assist
           - correct
           - objective
+          - trainer
       objective-file:
         description: 'Path to objective markdown file (only used when mode is "objective")'
         required: false
         default: 'zenon_objective.md'
+      topic:
+        description: 'The topic, framework, or technology to research and learn (only used when mode is "trainer")'
+        required: false
+        default: 'Docker multi-stage builds and Node.js optimization'
 
 jobs:
   zenon:
@@ -60,3 +65,4 @@ jobs:
           token-gh: ${{ secrets.TOKEN_GH }}
           mode: ${{ github.event.inputs.mode || 'assist' }}
           objective-file: ${{ github.event.inputs.objective-file || 'zenon_objective.md' }}
+          topic: ${{ github.event.inputs.topic || '' }}

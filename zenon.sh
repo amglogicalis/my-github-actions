@@ -7,6 +7,7 @@
 #   ./zenon.sh --mode objective          # implement goal from zenon_objective.md
 #   ./zenon.sh --mode objective --objective path/to/my_goal.md
 #   ./zenon.sh --mode assist --exclude "test/,fixtures/"
+#   ./zenon.sh --mode trainer --topic "Ruby on Rails 7.0"
 # =============================================================================
 set -euo pipefail
 

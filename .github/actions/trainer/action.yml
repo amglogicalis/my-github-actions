@@ -1,0 +1,57 @@
+name: 'Zenon Trainer'
+description: 'Train Zenon on any language, library, framework, or workflow to store in the repository knowledge cache.'
+author: 'amglogicalis'
+
+inputs:
+  topic:
+    description: 'The topic, framework, or technology to research and learn'
+    required: true
+  zenon-api-key:
+    description: 'Gemini API Key (required for search grounding)'
+    required: true
+  groq-api-key:
+    description: 'Groq API Key (optional)'
+    required: false
+    default: ''
+  cohere-api-key:
+    description: 'Cohere API Key (optional)'
+    required: false
+    default: ''
+  openrouter-api-key:
+    description: 'OpenRouter API Key (optional)'
+    required: false
+    default: ''
+  samba-api-key:
+    description: 'SambaNova API Key (optional)'
+    required: false
+    default: ''
+  cerebras-api-key:
+    description: 'Cerebras API Key (optional)'
+    required: false
+    default: ''
+  gh-models-token:
+    description: 'GitHub Models Token (optional)'
+    required: false
+    default: ''
+  token-gh:
+    description: 'GitHub Models Token (TOKEN_GH) (optional)'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Zenon Trainer
+      shell: bash
+      run: node "${{ github.action_path }}/../../../zenon.js"
+      env:
+        INPUT_ZENON_API_KEY: ${{ inputs.zenon-api-key }}
+        INPUT_GROQ_API_KEY: ${{ inputs.groq-api-key }}
+        INPUT_COHERE_API_KEY: ${{ inputs.cohere-api-key }}
+        INPUT_OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        INPUT_SAMBA_API_KEY: ${{ inputs.samba-api-key }}
+        INPUT_CEREBRAS_API_KEY: ${{ inputs.cerebras-api-key }}
+        INPUT_GH_MODELS_TOKEN: ${{ inputs.gh-models-token }}
+        INPUT_TOKEN_GH: ${{ inputs.token-gh }}
+        INPUT_MODE: 'trainer'
+        INPUT_TOPIC: ${{ inputs.topic }}

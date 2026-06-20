@@ -6,6 +6,7 @@
 #   .\zenon.ps1 --mode objective                     # implement goal from zenon_objective.md
 #   .\zenon.ps1 --mode objective --objective path\to\my_goal.md
 #   .\zenon.ps1 --mode assist --exclude "test/,fixtures/"
+#   .\zenon.ps1 --mode trainer --topic "Ruby on Rails 7.0"
 # =============================================================================
 param(
     [Parameter(ValueFromRemainingArguments = $true)]

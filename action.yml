@@ -39,13 +39,17 @@ inputs:
     required: false
     default: ''
   mode:
-    description: 'Operating mode: "assist" (analyses code & suggests improvements), "correct" (directly modifies files & commits) or "objective" (implements a goal described in a markdown file)'
+    description: 'Operating mode: "assist" (analyses code & suggests improvements), "correct" (directly modifies files & commits), "objective" (implements a goal described in a markdown file) or "trainer" (trains Zenon on a technology)'
     required: false
     default: 'assist'
   objective-file:
     description: 'Path (relative to repo root) to the markdown file containing the objective for "objective" mode (default: zenon_objective.md)'
     required: false
     default: 'zenon_objective.md'
+  topic:
+    description: 'The topic, framework, or technology to research and learn in "trainer" mode'
+    required: false
+    default: ''
   github-token:
     description: 'GitHub Token for posting PR comments and pushing code changes'
     required: false
@@ -75,6 +79,8 @@ runs:
         echo "GitHubModels : $([ -n "$INPUT_GH_MODELS_TOKEN" -o -n "$INPUT_TOKEN_GH" -o -n "$TOKEN_GH" ] && echo 'set ✅' || echo 'not set ❌')"
         if [ "$INPUT_MODE" = "objective" ]; then
           echo "Objective    : $INPUT_OBJECTIVE_FILE"
+        elif [ "$INPUT_MODE" = "trainer" ]; then
+          echo "Topic        : $INPUT_TOPIC"
         fi
         echo "========================"
       env:
@@ -87,6 +93,7 @@ runs:
         INPUT_GH_MODELS_TOKEN: ${{ inputs.gh-models-token }}
         INPUT_TOKEN_GH: ${{ inputs.token-gh }}
         INPUT_MODE: ${{ inputs.mode }}
+        INPUT_TOPIC: ${{ inputs.topic }}
 
     - name: Run Zenon AI Assistant
       shell: bash
@@ -104,5 +111,6 @@ runs:
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
         INPUT_EXCLUDE: ${{ inputs.exclude }}
         INPUT_OBJECTIVE_FILE: ${{ inputs.objective-file }}
+        INPUT_TOPIC: ${{ inputs.topic }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
 

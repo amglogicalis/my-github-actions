@@ -342,6 +342,7 @@ async function selectModelsWithAI(keys, stackInfo, mode, totalSize) {
 
   const modeDesc = mode === 'correct'   ? 'correccion automatica de bugs, salida JSON estructurada'
                  : mode === 'objective' ? 'implementacion de objetivo de desarrollo, salida JSON estructurada'
+                 : mode === 'trainer'   ? 'entrenamiento de conocimiento, requiere busqueda en Google (Google Search Grounding). Prioriza obligatoriamente modelos del proveedor "gemini" en los primeros lugares de la cadena para que puedan realizar busquedas en la web.'
                  : 'revision de codigo, produce informe Markdown';
 
   const selectorSystemInstruction =
@@ -358,7 +359,7 @@ async function selectModelsWithAI(keys, stackInfo, mode, totalSize) {
     'MODELOS DISPONIBLES (solo estos tienen API keys configuradas):\n' +
     JSON.stringify(availableModels, null, 2) + '\n\n' +
     'REGLAS DE SELECCION:\n' +
-    '1. Para modo "correct" u "objective": prioriza modelos con especializacion "code" o "reasoning"\n' +
+    '1. Para modo "correct" u "objective": prioriza modelos con especializacion "code" o "reasoning". Para modo "trainer", prioriza obligatoriamente modelos de "gemini" que soportan busqueda en Google.\n' +
     '2. Para codebases GRANDES o MUY GRANDES (>100KB): prioriza providers con maxInputChars mas alto\n' +
     '3. El primer modelo de la cadena debe ser el mas capaz disponible\n' +
     '4. Incluye modelos de al menos 2 providers diferentes para resilencia\n' +
@@ -443,6 +444,8 @@ function parseArgs() {
       args.exclude = process.argv[++i];
     } else if ((arg === '--objective' || arg === '-o') && i + 1 < process.argv.length) {
       args.objectiveFile = process.argv[++i];
+    } else if ((arg === '--topic' || arg === '-t') && i + 1 < process.argv.length) {
+      args.topic = process.argv[++i];
     }
     // Note: --model / -d intentionally removed. Zenon selects models automatically.
   }
@@ -1180,6 +1183,7 @@ async function main() {
   const mode = (cliArgs.mode || process.env.INPUT_MODE || 'assist').toLowerCase();
   const exclude = cliArgs.exclude || process.env.INPUT_EXCLUDE || '';
   const objectiveFile = cliArgs.objectiveFile || process.env.INPUT_OBJECTIVE_FILE || 'zenon_objective.md';
+  const topic = cliArgs.topic || process.env.INPUT_TOPIC || '';
   const githubToken = process.env.INPUT_GITHUB_TOKEN || process.env.GITHUB_TOKEN;
   const isCI = !!process.env.GITHUB_ACTIONS;
 
@@ -1193,6 +1197,8 @@ async function main() {
   console.log(`Exclude      : "${exclude || '(none)'}"`);
   if (mode === 'objective') {
     console.log(`Objective    : "${objectiveFile}"`);
+  } else if (mode === 'trainer') {
+    console.log(`Topic        : "${topic || '(none)'}"`);
   }
   console.log('=====================');
 
@@ -1205,9 +1211,32 @@ async function main() {
     process.exit(1);
   }
 
-  if (!['assist', 'correct', 'objective'].includes(mode)) {
-    console.error(`❌ Modo "${mode}" no reconocido. Modos disponibles: "assist", "correct", "objective".`);
+  if (!['assist', 'correct', 'objective', 'trainer'].includes(mode)) {
+    console.error(`❌ Modo "${mode}" no reconocido. Modos disponibles: "assist", "correct", "objective", "trainer".`);
     process.exit(1);
+  }
+
+  // =============================================================================
+  // PASO 8: Modo Trainer — Leer el tema a aprender
+  // =============================================================================
+  let topicContent = '';
+  if (mode === 'trainer') {
+    if (topic) {
+      topicContent = topic.trim();
+    } else {
+      // Fallback a zenon_training.md
+      const trainingFilePath = path.resolve(process.cwd(), 'zenon_training.md');
+      if (fs.existsSync(trainingFilePath)) {
+        topicContent = fs.readFileSync(trainingFilePath, 'utf8').trim();
+      }
+    }
+
+    if (!topicContent) {
+      console.error('❌ No se ha proporcionado un tema para entrenar.');
+      console.error('   Usa --topic "<tema>" o crea un archivo "zenon_training.md" con las instrucciones.');
+      process.exit(1);
+    }
+    console.log(`🎯 Tema cargado para entrenamiento: "${topicContent.length > 60 ? topicContent.substring(0, 60) + '...' : topicContent}"`);
   }
 
   // =============================================================================
@@ -1234,24 +1263,29 @@ async function main() {
   console.log(`Mode: ${mode}`);
   console.log(`Context: ${isCI ? 'GitHub Actions CI' : 'Local Terminal'}`);
 
-  console.log('Scanning repository for code files...');
-  const files = getProjectFiles(exclude);
-  console.log(`Found ${files.length} code files to analyze.`);
-
-  if (files.length === 0) {
-    console.log('No suitable code files found for analysis. Exiting.');
-    return;
-  }
-
-  // Analizar la pila tecnológica dominante y construir el catálogo prioritario
-  const stackInfo = analyzeRepositoryStack(files);
+  let files = [];
+  let stackInfo = { dominant: 'javascript', scores: {} };
   let totalSize = 0;
-  for (const file of files) {
-    try {
-      if (fs.existsSync(file)) {
-        totalSize += fs.statSync(file).size;
-      }
-    } catch (e) {}
+
+  if (mode !== 'trainer') {
+    console.log('Scanning repository for code files...');
+    files = getProjectFiles(exclude);
+    console.log(`Found ${files.length} code files to analyze.`);
+
+    if (files.length === 0) {
+      console.log('No suitable code files found for analysis. Exiting.');
+      return;
+    }
+
+    // Analizar la pila tecnológica dominante y construir el catálogo prioritario
+    stackInfo = analyzeRepositoryStack(files);
+    for (const file of files) {
+      try {
+        if (fs.existsSync(file)) {
+          totalSize += fs.statSync(file).size;
+        }
+      } catch (e) {}
+    }
   }
 
   // Intentar la selección inteligente mediante IA primero
@@ -1264,35 +1298,36 @@ async function main() {
     chain = buildDefaultChain(keys);
   }
 
-  console.log(`Dominant stack detected: ${stackInfo.dominant.toUpperCase()}`);
+  if (mode !== 'trainer') {
+    console.log(`Dominant stack detected: ${stackInfo.dominant.toUpperCase()}`);
+  }
   console.log(`Execution chain: ${chain.map(c => `${c.provider.toUpperCase()}:${c.model}`).join(' → ')}`);
   console.log(`🤖 IA Principal elegida para tu stack: [${chain[0].provider.toUpperCase()}] ${chain[0].model}`);
 
-  if (chain.length === 0) {
-    console.error('❌ Ninguno de los proveedores configurados coincide con los modelos disponibles.');
-    process.exit(1);
+  const engineLabel = mode === 'correct' ? 'precision' : mode === 'objective' ? 'objective' : mode === 'trainer' ? 'trainer' : 'analysis';
+  if (mode !== 'trainer') {
+    console.log(`Total codebase size: ${(totalSize / 1024).toFixed(2)} KB | Engine: ${engineLabel} mode`);
   }
-
-  const engineLabel = mode === 'correct' ? 'precision' : mode === 'objective' ? 'objective' : 'analysis';
-  console.log(`Total codebase size: ${(totalSize / 1024).toFixed(2)} KB | Engine: ${engineLabel} mode`);
 
   // Construir el payload del repositorio completo
   let codebasePayload = '';
-  for (const file of files) {
-    try {
-      if (fs.existsSync(file)) {
-        const content = fs.readFileSync(file, 'utf8');
-        codebasePayload += `--- FILE: ${file}\n${content}\n--- END OF FILE ---\n\n`;
+  if (mode !== 'trainer') {
+    for (const file of files) {
+      try {
+        if (fs.existsSync(file)) {
+          const content = fs.readFileSync(file, 'utf8');
+          codebasePayload += `--- FILE: ${file}\n${content}\n--- END OF FILE ---\n\n`;
+        }
+      } catch (e) {
+        console.warn(`Warning: Could not read file ${file}: ${e.message}`);
       }
-    } catch (e) {
-      console.warn(`Warning: Could not read file ${file}: ${e.message}`);
     }
   }
 
   // =============================================================================
   // PASO 2: Autoentrenamiento y Carga de Conocimiento Contextual (Caché & Grounding)
   // =============================================================================
-  const fingerprint = computeFingerprint(files);
+  const fingerprint = mode === 'trainer' ? 'trainer' : computeFingerprint(files);
   let cachedKnowledge = '';
   let cacheLoaded = false;
   let previousKnowledge = '';
@@ -1317,7 +1352,7 @@ async function main() {
       if (cacheData.knowledge) {
         previousKnowledge = cacheData.knowledge;
       }
-      if (cacheData.fingerprint === fingerprint && cacheData.knowledge) {
+      if (mode !== 'trainer' && cacheData.fingerprint === fingerprint && cacheData.knowledge) {
         cachedKnowledge = cacheData.knowledge;
         cacheLoaded = true;
         console.log('ℹ️  Cargada base de conocimiento contextual desde la caché (.zenon_cache.json)');
@@ -1327,7 +1362,7 @@ async function main() {
     }
   }
 
-  if (!cacheLoaded) {
+  if (mode !== 'trainer' && !cacheLoaded) {
     console.log('🧠 Base de conocimiento no encontrada o desactualizada. Iniciando autoentrenamiento...');
     ensureGitignore();
 
@@ -1397,6 +1432,84 @@ Return the learned project knowledge profile now.`;
     } catch (err) {
       console.warn('⚠️  Error durante el autoentrenamiento:', err.message);
       console.log('Continuando con el análisis directo sin base de conocimiento...');
+    }
+  }
+
+  // =============================================================================
+  // PASO 8: Modo Trainer — Ejecución de investigación y actualización de caché
+  // =============================================================================
+  if (mode === 'trainer') {
+    const trainerSystemInstruction = `You are "Zenon", a codebase architect and senior software engineer.
+Your task is to research and learn the technical details, architecture, best practices, and configuration rules for the topic specified by the user.
+Use your training knowledge and search capabilities to extract:
+1. Core concepts, architecture, and design patterns associated with this technology.
+2. Typical configuration files, directories, dependencies, and environment variables.
+3. Best practices for clean coding, security, performance, and structure.
+4. Common pitfalls, anti-patterns, and troubleshooting strategies.
+
+Format your findings in a structured, professional, and concise technical profile. This profile will be appended to Zenon's contextual knowledge base so that future code reviews and corrections in this repository will adhere to this technology's guidelines.`;
+
+    const trainerUserPrompt = `Please research and compile a technical profile for:
+"${topicContent}"
+
+If we already have existing context in the cache, consolidate and merge the new findings with it.
+Return the structured, professional technical profile now.`;
+
+    try {
+      console.log('🔍 Zenon Trainer is researching the topic using search grounding...');
+      const trainingResult = await callWithFallback(chain, 'assist', trainerSystemInstruction, trainerUserPrompt, true);
+      const newKnowledge = trainingResult.text;
+
+      // Merge incrementally with existing cache
+      let updatedKnowledge = previousKnowledge;
+      const separator = `\n\n=== APRENDIZAJE: ${topicContent.toUpperCase()} ===\n`;
+      if (updatedKnowledge.includes(separator)) {
+        // Replace previous training on this topic
+        const regex = new RegExp(`${separator.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}[\\s\\S]*?(?=\\n\\n=== APRENDIZAJE:|$)`);
+        updatedKnowledge = updatedKnowledge.replace(regex, separator + newKnowledge);
+      } else {
+        // Append
+        updatedKnowledge = (updatedKnowledge ? updatedKnowledge + '\n\n' : '') + separator + newKnowledge;
+      }
+
+      // Preserve existing codebase fingerprint if present
+      let cacheData = { fingerprint: '' };
+      if (fs.existsSync(CACHE_FILE)) {
+        try { cacheData = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8')); } catch (e) {}
+      }
+
+      // Write updated cache
+      fs.writeFileSync(CACHE_FILE, JSON.stringify({
+        fingerprint: cacheData.fingerprint || '',
+        knowledge: updatedKnowledge,
+        updatedAt: new Date().toISOString()
+      }, null, 2), 'utf8');
+
+      console.log(`✅ Entrenamiento completado con éxito utilizando la IA: [${trainingResult.provider.toUpperCase()}] ${trainingResult.model}`);
+
+      // Report
+      if (isCI) {
+        let summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Trainer\n\n`;
+        summaryContent += `#### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_zenon_trainer.png" height="20" align="absmiddle" /> Aprendizaje Completado\n\n`;
+        summaryContent += `Zenon ha investigado e incorporado con éxito el siguiente tema a la base de conocimiento:\n\n`;
+        summaryContent += `**Tema**: \`${topicContent}\`\n\n`;
+        summaryContent += `#### Resumen Técnico Aprendido:\n${newKnowledge}\n`;
+        if (process.env.GITHUB_STEP_SUMMARY) {
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent);
+        }
+      } else {
+        // Local mode report
+        let localReport = `# <img src="logo_polis_zenon.png" height="32" /> Zenon Polis — Trainer Report\n\n`;
+        localReport += `## <img src="logo_zenon_trainer.png" height="26" /> Aprendizaje Completado\n\n`;
+        localReport += `**Tema**: \`${topicContent}\`\n\n`;
+        localReport += `### Resumen Técnico Aprendido:\n\n${newKnowledge}\n`;
+        fs.writeFileSync('zenon_report.md', localReport, 'utf8');
+        console.log('Detalles del aprendizaje guardados en zenon_report.md');
+      }
+      return;
+    } catch (err) {
+      console.error('❌ Error durante el entrenamiento:', err.message);
+      process.exit(1);
     }
   }
 

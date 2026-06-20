@@ -99,11 +99,11 @@ const PROVIDERS = {
   samba: {
     keyName: 'SAMBA_API_KEY',
     models: [
-      { id: 'DeepSeek-V3.2',               maxInputChars: 500000 }, // 128K tokens typical (500K chars)
-      { id: 'gpt-oss-120b',                maxInputChars: 500000 }, // 128K tokens (500K chars)
-      { id: 'Meta-Llama-3.3-70B-Instruct', maxInputChars: 500000 }, // 128K tokens (500K chars)
-      { id: 'gemma-4-31B-it',              maxInputChars: 500000 }, // 128K tokens (500K chars)
-      { id: 'MiniMax-M2.7',                maxInputChars: 500000 }  // 128K tokens typical (500K chars)
+      { id: 'DeepSeek-V3.2',               maxInputChars: 240000 }, // 60K tokens (240K chars) to avoid TPM rate-limit
+      { id: 'gpt-oss-120b',                maxInputChars: 240000 }, // 60K tokens (240K chars)
+      { id: 'Meta-Llama-3.3-70B-Instruct', maxInputChars: 240000 }, // 60K tokens (240K chars)
+      { id: 'gemma-4-31B-it',              maxInputChars: 240000 }, // 60K tokens (240K chars)
+      { id: 'MiniMax-M2.7',                maxInputChars: 240000 }  // 60K tokens (240K chars)
     ]
   },
   cerebras: {
@@ -117,9 +117,9 @@ const PROVIDERS = {
   github_models: {
     keyName: 'GH_MODELS_TOKEN',
     models: [
-      { id: 'gpt-4o',                       maxInputChars: 500000 }, // 128K tokens (500K chars)
+      { id: 'gpt-4o',                       maxInputChars:  28000 }, // strict 8k tokens free tier limit (28K chars)
       { id: 'Meta-Llama-3.1-405B-Instruct', maxInputChars:  28000 }, // Llama 405B (strict 8k tokens free tier limit)
-      { id: 'gpt-4o-mini',                  maxInputChars: 500000 }, // 128K tokens (500K chars)
+      { id: 'gpt-4o-mini',                  maxInputChars:  28000 }, // strict 8k tokens free tier limit (28K chars)
       { id: 'Meta-Llama-3.1-8B-Instruct',  maxInputChars:  28000 }  // Llama 8B (strict 8k tokens free tier limit)
     ]
   }

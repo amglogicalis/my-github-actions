@@ -82,7 +82,7 @@ jobs:
       # Optional: Send email with report using dawidd6/action-send-mail
       # Uncomment and configure the following step if you want email notifications:
       - name: Send Email Report
-        if: always() && inputs.notify-email != ''
+        if: always() && inputs['notify-email'] != ''
         uses: dawidd6/action-send-mail@v4
         with:
           server_address: smtp.gmail.com

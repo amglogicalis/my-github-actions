@@ -18,9 +18,7 @@ jobs:
   update-docs:
     name: Run Zenon Updater
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' || 
-      (github.event_name != 'workflow_dispatch' && vars.ZENON_DISABLE_AUTO_UPDATE != 'true' && secrets.ZENON_DISABLE_AUTO_UPDATE != 'true')
+    if: github.event_name == 'workflow_dispatch' || vars.ZENON_DISABLE_AUTO_UPDATE != 'true'
     
     permissions:
       contents: write

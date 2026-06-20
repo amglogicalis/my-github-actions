@@ -347,14 +347,25 @@ Puedes usar directamente las sub-acciones específicas de Polis sin invocar la a
 
 ### C. Desactivar o Activar la Ejecución Automática (Push/PR)
 
-Si deseas desactivar la ejecución automática de los flujos de **Zenon Reviewer** y **Zenon Updater** en cada `push` o `pull_request` (por ejemplo, para evitar consumo innecesario de cuotas de API) y que **solo se ejecuten de forma manual**, puedes configurar variables o secretos en los ajustes de tu repositorio sin tener que modificar los archivos YAML.
+Si deseas desactivar la ejecución automática de los flujos de **Zenon Reviewer** y **Zenon Updater** en cada `push` o `pull_request` y que **solo se ejecuten de forma manual**, puedes configurar una **Variable de Repositorio** (Repository Variable) en los ajustes de tu repositorio **sin modificar ningún archivo YAML**.
 
-* **Desactivar Auditoría Automática de Código (Reviewer)**:
-  Crea una Variable de Repositorio (Repository Variable) o Secreto (Secret) llamado `ZENON_DISABLE_AUTO_REVIEW` y asígnale el valor `true`.
-* **Desactivar Sincronización Automática de Documentos (Updater)**:
-  Crea una Variable de Repositorio (Repository Variable) o Secreto (Secret) llamado `ZENON_DISABLE_AUTO_UPDATE` y asígnale el valor `true`.
+> [!IMPORTANT]
+> Usa **Variables de Repositorio** (Repository Variables), **no** secretos. Las variables son accesibles en las condiciones `if` de los flujos de GitHub Actions, mientras que los secretos no lo son a ese nivel.
 
-Una vez configurados como `true`, los flujos correspondientes se saltarán automáticamente en ejecuciones automáticas de commits y PRs. Sin embargo, **podrás seguir lanzándolos manualmente** en cualquier momento desde la interfaz de GitHub (pestaña **Actions** -> Seleccionar flujo -> **Run workflow**).
+**Pasos para desactivar la auto-ejecución:**
+
+1. Ve a tu repositorio en GitHub → **Settings** → **Secrets and variables** → **Actions** → pestaña **Variables**
+2. Haz clic en **New repository variable**
+3. Crea la variable correspondiente:
+
+| Variable | Flujo que controla | Valor para desactivar |
+| :--- | :--- | :---: |
+| `ZENON_DISABLE_AUTO_REVIEW` | `zenon-reviewer.yml` | `true` |
+| `ZENON_DISABLE_AUTO_UPDATE` | `zenon-updater.yml` | `true` |
+
+Una vez creadas con valor `true`, los flujos se saltarán en pushes y PRs automáticos, pero **seguirás pudiendo ejecutarlos manualmente** desde la pestaña **Actions** → seleccionar el flujo → **Run workflow**.
+
+Para **reactivar** la auto-ejecución, cambia el valor a `false` o elimina la variable directamente.
 
 ---
 

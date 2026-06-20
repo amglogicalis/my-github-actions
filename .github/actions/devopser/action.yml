@@ -1,0 +1,107 @@
+name: 'Zenon DevOpser'
+description: 'Autonomous DevOps Operator & Local Serverless Lambda Platform — declare tasks in natural language, let AI orchestrate and execute them.'
+author: 'amglogicalis'
+branding:
+  icon: 'cpu'
+  color: 'purple'
+
+inputs:
+  zenon-api-key:
+    description: 'Zenon AI API Key (Gemini API)'
+    required: false
+    default: ''
+  groq-api-key:
+    description: 'Groq API Key (optional)'
+    required: false
+    default: ''
+  cohere-api-key:
+    description: 'Cohere API Key (optional)'
+    required: false
+    default: ''
+  openrouter-api-key:
+    description: 'OpenRouter API Key (optional)'
+    required: false
+    default: ''
+  samba-api-key:
+    description: 'SambaNova API Key (optional)'
+    required: false
+    default: ''
+  cerebras-api-key:
+    description: 'Cerebras API Key (optional)'
+    required: false
+    default: ''
+  gh-models-token:
+    description: 'GitHub Models API Token (optional)'
+    required: false
+    default: ''
+  token-gh:
+    description: 'Alternative GitHub Models Token (optional)'
+    required: false
+    default: ''
+  devops-plan-file:
+    description: 'Path (relative to repo root) to the DevOpser plan file (default: zenon_devops.md)'
+    required: false
+    default: 'zenon_devops.md'
+  devops-task:
+    description: 'Name or slug of a specific task to run (filters the plan). Can also be an inline task description if no plan file exists.'
+    required: false
+    default: ''
+  self-heal:
+    description: 'If "true", Zenon DevOpser will attempt to auto-fix failing scripts using AI and re-run them.'
+    required: false
+    default: 'false'
+  notify-email:
+    description: 'Email address to notify with the execution report (optional). Requires dawidd6/action-send-mail in your workflow.'
+    required: false
+    default: ''
+  notify-webhook:
+    description: 'Discord/Slack/generic webhook URL to send the execution report to (optional).'
+    required: false
+    default: ''
+  github-token:
+    description: 'GitHub Token for accessing the repository'
+    required: false
+    default: '${{ github.token }}'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Zenon DevOpser Pre-flight
+      shell: bash
+      run: |
+        echo "=== Zenon DevOpser Pre-flight ==="
+        echo "Node version  : $(node --version)"
+        echo "Working dir   : $(pwd)"
+        echo "Plan File     : $INPUT_DEVOPS_PLAN_FILE"
+        echo "Task Filter   : ${INPUT_DEVOPS_TASK:-'(all tasks)'}"
+        echo "Self-Heal     : $INPUT_SELF_HEAL"
+        echo "Notify Email  : ${INPUT_NOTIFY_EMAIL:-'(silent mode)'}"
+        echo "Notify Webhook: ${INPUT_NOTIFY_WEBHOOK:0:40}${INPUT_NOTIFY_WEBHOOK:+...}"
+        echo "=================================="
+      env:
+        INPUT_DEVOPS_PLAN_FILE: ${{ inputs.devops-plan-file }}
+        INPUT_DEVOPS_TASK: ${{ inputs.devops-task }}
+        INPUT_SELF_HEAL: ${{ inputs.self-heal }}
+        INPUT_NOTIFY_EMAIL: ${{ inputs.notify-email }}
+        INPUT_NOTIFY_WEBHOOK: ${{ inputs.notify-webhook }}
+
+    - name: Run Zenon DevOpser
+      shell: bash
+      run: node "${{ github.action_path }}/../../src/zenon.js"
+      env:
+        INPUT_ZENON_API_KEY: ${{ inputs.zenon-api-key }}
+        INPUT_GROQ_API_KEY: ${{ inputs.groq-api-key }}
+        INPUT_COHERE_API_KEY: ${{ inputs.cohere-api-key }}
+        INPUT_OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        INPUT_SAMBA_API_KEY: ${{ inputs.samba-api-key }}
+        INPUT_CEREBRAS_API_KEY: ${{ inputs.cerebras-api-key }}
+        INPUT_GH_MODELS_TOKEN: ${{ inputs.gh-models-token }}
+        INPUT_TOKEN_GH: ${{ inputs.token-gh }}
+        INPUT_MODE: devops
+        INPUT_DEVOPS_PLAN_FILE: ${{ inputs.devops-plan-file }}
+        INPUT_DEVOPS_TASK: ${{ inputs.devops-task }}
+        INPUT_SELF_HEAL: ${{ inputs.self-heal }}
+        INPUT_NOTIFY_EMAIL: ${{ inputs.notify-email }}
+        INPUT_NOTIFY_WEBHOOK: ${{ inputs.notify-webhook }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}

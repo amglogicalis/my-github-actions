@@ -18,6 +18,15 @@
 #   .\zenon.ps1 --mode tester --auto-fix             # run tests and auto-fix/commit changes
 #   .\zenon.ps1 --mode tester --test-cmd "npm test"  # run tests with custom command
 #   .\zenon.ps1 --mode tester --topic "auth.test.js" # run tests focusing on auth.test.js
+#
+#   ---- Zenon DevOpser — Autonomous DevOps Operator & Lambda Platform ----
+#   .\zenon.ps1 --mode devops                                    # run all tasks in zenon_devops.md
+#   .\zenon.ps1 --mode devops --plan-file my_pipeline.md         # custom plan file
+#   .\zenon.ps1 --mode devops --devops-task "check-ssl"          # run only a specific task
+#   .\zenon.ps1 --mode devops --self-heal                        # enable AI self-healing on failures
+#   .\zenon.ps1 --mode devops --notify-webhook "https://discord.com/api/webhooks/..."   # notify Discord
+#   .\zenon.ps1 --mode devops --notify-email "you@example.com"   # set email report target
+#   .\zenon.ps1 --mode devops --self-heal --devops-task "my-task" # targeted + self-heal
 # =============================================================================
 param(
     [Parameter(ValueFromRemainingArguments = $true)]

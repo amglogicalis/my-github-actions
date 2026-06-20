@@ -1,0 +1,96 @@
+name: ⚡ Zenon DevOpser
+
+on:
+  workflow_dispatch:
+    inputs:
+      devops-plan-file:
+        description: 'Plan file path (default: zenon_devops.md). The file defines your tasks, scripts and dependencies.'
+        required: false
+        default: 'zenon_devops.md'
+      devops-task:
+        description: 'Optional: name or slug of a specific task to run (filters the plan). Leave empty to run ALL tasks.'
+        required: false
+        default: ''
+      self-heal:
+        description: 'Enable AI Self-Healing? If a script fails, AI will rewrite and retry it.'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      notify-email:
+        description: 'Email to send the execution report to (optional, leave empty for silent mode).'
+        required: false
+        default: ''
+      notify-webhook:
+        description: 'Discord/Slack/custom webhook URL for notifications (optional).'
+        required: false
+        default: ''
+      provider:
+        description: 'AI Provider to prefer (leave empty for auto-selection)'
+        required: false
+        default: ''
+
+jobs:
+  zenon-devopser:
+    name: ⚡ Zenon DevOpser — Autonomous Pipeline
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Zenon DevOpser
+        uses: ./.github/actions/devopser
+        with:
+          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          cohere-api-key: ${{ secrets.COHERE_API_KEY }}
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          samba-api-key: ${{ secrets.SAMBA_API_KEY }}
+          cerebras-api-key: ${{ secrets.CEREBRAS_API_KEY }}
+          gh-models-token: ${{ secrets.GH_MODELS_TOKEN }}
+          devops-plan-file: ${{ inputs.devops-plan-file }}
+          devops-task: ${{ inputs.devops-task }}
+          self-heal: ${{ inputs.self-heal }}
+          notify-email: ${{ inputs.notify-email }}
+          notify-webhook: ${{ inputs.notify-webhook }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload DevOpser Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zenon-devopser-report
+          path: |
+            zenon_report.md
+            .zenon_devops/tasks/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # Optional: Send email with report using dawidd6/action-send-mail
+      # Uncomment and configure the following step if you want email notifications:
+      # - name: Send Email Report
+      #   if: always() && inputs.notify-email != ''
+      #   uses: dawidd6/action-send-mail@v4
+      #   with:
+      #     server_address: smtp.gmail.com
+      #     server_port: 587
+      #     username: ${{ secrets.MAIL_USERNAME }}
+      #     password: ${{ secrets.MAIL_PASSWORD }}
+      #     subject: "⚡ Zenon DevOpser Report — ${{ github.repository }}"
+      #     to: ${{ inputs.notify-email }}
+      #     from: Zenon DevOpser
+      #     body: file://zenon_report.md
+      #     content_type: text/markdown

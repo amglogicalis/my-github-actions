@@ -354,6 +354,7 @@ async function selectModelsWithAI(keys, stackInfo, mode, totalSize, userQuery = 
                  : mode === 'helper'    ? 'asistencia interactiva sobre la base de codigo y resolucion de consultas'
                  : mode === 'updater'   ? 'sincronizacion de documentacion de texto con el codigo, salida JSON estructurada'
                  : mode === 'tester'    ? 'analisis de tests, identificacion de fallos y generacion/correccion de pruebas unitarias. Si auto-fix, salida JSON estructurada con los archivos corregidos; si modo reporte, informe Markdown detallado con trazas y soluciones.'
+                 : mode === 'devops'    ? 'operador DevOps autonomo: analiza un plan de tareas definido por el usuario en lenguaje natural, genera scripts ejecutables personalizados, los orquesta en secuencia con dependencias, aplica auto-sanacion ante fallos y produce un reporte de ejecucion.'
                  : 'revision de codigo, produce informe Markdown';
 
   const selectorSystemInstruction =
@@ -570,6 +571,20 @@ function parseArgs() {
       } else {
         args.autoFix = true;
       }
+    } else if ((arg === '--plan-file' || arg === '--devops-plan') && i + 1 < process.argv.length) {
+      args.devopsPlanFile = process.argv[++i];
+    } else if ((arg === '--devops-task' || arg === '--task') && i + 1 < process.argv.length) {
+      args.devopsTask = process.argv[++i];
+    } else if ((arg === '--notify-email' || arg === '--email') && i + 1 < process.argv.length) {
+      args.notifyEmail = process.argv[++i];
+    } else if ((arg === '--notify-webhook' || arg === '--webhook') && i + 1 < process.argv.length) {
+      args.notifyWebhook = process.argv[++i];
+    } else if (arg === '--self-heal') {
+      args.selfHeal = true;
+    }
+    // --self-heal true/false support
+    else if (arg === '--self-heal' || (arg === '--self-heal' && process.argv[i+1] === 'true')) {
+      args.selfHeal = true;
     }
   }
   return args;
@@ -1397,6 +1412,16 @@ async function main() {
     console.log(`Test Command : "${cliArgs.testCmd || process.env.INPUT_TEST_CMD || '(auto-detect)'}"`);
     console.log(`Auto Fix     : ${cliArgs.autoFix || process.env.INPUT_AUTO_FIX === 'true' ? 'yes' : 'no'}`);
     if (topic) console.log(`Focus Topic  : "${topic}"`);
+  } else if (mode === 'devops') {
+    const planFile = cliArgs.devopsPlanFile || process.env.INPUT_DEVOPS_PLAN_FILE || 'zenon_devops.md';
+    const devopsTask = cliArgs.devopsTask || process.env.INPUT_DEVOPS_TASK || '';
+    console.log(`Plan File    : "${planFile}"`);
+    if (devopsTask) console.log(`Task Filter  : "${devopsTask}"`);
+    console.log(`Self-Heal    : ${cliArgs.selfHeal || process.env.INPUT_SELF_HEAL === 'true' ? 'yes' : 'no'}`);
+    const notifyEmail = cliArgs.notifyEmail || process.env.INPUT_NOTIFY_EMAIL || '';
+    const notifyWebhook = cliArgs.notifyWebhook || process.env.INPUT_NOTIFY_WEBHOOK || '';
+    console.log(`Notify Email : ${notifyEmail ? `"${notifyEmail}"` : '(silent mode)'}`);
+    console.log(`Notify Webhook: ${notifyWebhook ? `"${notifyWebhook.substring(0, 40)}..."` : '(not set)'}`);
   }
   console.log('=====================');
 
@@ -1409,8 +1434,8 @@ async function main() {
     process.exit(1);
   }
 
-  if (!['assist', 'correct', 'objective', 'trainer', 'reviewer', 'analyzer', 'helper', 'updater', 'tester'].includes(mode)) {
-    console.error(`❌ Modo "${mode}" no reconocido. Modos disponibles: "assist", "correct", "objective", "trainer", "reviewer", "analyzer", "helper", "updater", "tester".`);
+  if (!['assist', 'correct', 'objective', 'trainer', 'reviewer', 'analyzer', 'helper', 'updater', 'tester', 'devops'].includes(mode)) {
+    console.error(`❌ Modo "${mode}" no reconocido. Modos disponibles: "assist", "correct", "objective", "trainer", "reviewer", "analyzer", "helper", "updater", "tester", "devops".`);
     process.exit(1);
   }
 
@@ -1648,7 +1673,7 @@ async function main() {
   let stackInfo = { dominant: 'javascript', scores: {} };
   let totalSize = 0;
 
-  if (mode !== 'trainer') {
+  if (mode !== 'trainer' && mode !== 'devops') {
     console.log('Scanning repository for code files...');
     files = getProjectFiles(exclude);
     console.log(`Found ${files.length} code files to analyze.`);
@@ -1687,6 +1712,9 @@ async function main() {
     userQuery = 'Sincronización automática de documentación con cambios de código';
   } else if (mode === 'tester') {
     userQuery = topic ? `Análisis y testing de: ${topic}` : 'Análisis de tests, diagnóstico de fallos y corrección de pruebas unitarias';
+  } else if (mode === 'devops') {
+    const _devTask = cliArgs.devopsTask || process.env.INPUT_DEVOPS_TASK || '';
+    userQuery = _devTask ? `Operador DevOps: ${_devTask}` : 'Operador DevOps autónomo: orquestar y ejecutar plan de automatización definido por el usuario en zenon_devops.md';
   }
 
   // Intentar la selección inteligente mediante IA primero
@@ -1699,20 +1727,20 @@ async function main() {
     chain = buildDefaultChain(keys);
   }
 
-  if (mode !== 'trainer') {
+  if (mode !== 'trainer' && mode !== 'devops') {
     console.log(`Dominant stack detected: ${stackInfo.dominant.toUpperCase()}`);
   }
   console.log(`Execution chain: ${chain.map(c => `${c.provider.toUpperCase()}:${c.model}`).join(' → ')}`);
   console.log(`🤖 IA Principal elegida para tu stack: [${chain[0].provider.toUpperCase()}] ${chain[0].model}`);
 
-  const engineLabel = mode === 'correct' ? 'precision' : mode === 'objective' ? 'objective' : mode === 'trainer' ? 'trainer' : 'analysis';
-  if (mode !== 'trainer') {
+  const engineLabel = mode === 'correct' ? 'precision' : mode === 'objective' ? 'objective' : mode === 'trainer' ? 'trainer' : mode === 'devops' ? 'devops' : 'analysis';
+  if (mode !== 'trainer' && mode !== 'devops') {
     console.log(`Total codebase size: ${(totalSize / 1024).toFixed(2)} KB | Engine: ${engineLabel} mode`);
   }
 
-  // Construir el payload del repositorio completo (omitido en trainer y reviewer inicialmente)
+  // Construir el payload del repositorio completo (omitido en trainer, reviewer y devops inicialmente)
   let codebasePayload = '';
-  if (mode !== 'trainer' && mode !== 'reviewer') {
+  if (mode !== 'trainer' && mode !== 'reviewer' && mode !== 'devops') {
     for (const file of files) {
       try {
         if (fs.existsSync(file)) {
@@ -1763,7 +1791,7 @@ async function main() {
     }
   }
 
-  if (mode !== 'trainer' && !cacheLoaded) {
+  if (mode !== 'trainer' && mode !== 'devops' && !cacheLoaded) {
     console.log('🧠 Base de conocimiento no encontrada o desactualizada. Iniciando autoentrenamiento...');
     ensureGitignore();
 
@@ -2237,6 +2265,510 @@ ${
       return;
     } catch (err) {
       console.error('❌ Error durante el modo tester:', err.message);
+      process.exit(1);
+    }
+  }
+
+  // =============================================================================
+  // ZENON DEVOPSER — Autonomous Local Serverless Lambda Platform & DevOps Operator
+  // =============================================================================
+  if (mode === 'devops') {
+    try {
+      const { execSync, spawnSync } = require('child_process');
+
+      // --- Resolve DevOpser configuration ---
+      const devopsPlanFile  = cliArgs.devopsPlanFile  || process.env.INPUT_DEVOPS_PLAN_FILE  || 'zenon_devops.md';
+      const devopsTaskFilter = cliArgs.devopsTask     || process.env.INPUT_DEVOPS_TASK        || '';
+      const selfHeal        = cliArgs.selfHeal        || process.env.INPUT_SELF_HEAL === 'true';
+      const notifyEmail     = cliArgs.notifyEmail     || process.env.INPUT_NOTIFY_EMAIL       || '';
+      const notifyWebhook   = cliArgs.notifyWebhook   || process.env.INPUT_NOTIFY_WEBHOOK     || '';
+      const DEVOPS_DIR      = path.join(process.cwd(), '.zenon_devops');
+      const TASKS_DIR       = path.join(DEVOPS_DIR, 'tasks');
+
+      console.log('\n🚀 Zenon DevOpser — Autonomous DevOps Operator initializing...');
+
+      // --- 1. Ensure .zenon_devops/tasks/ folder exists ---
+      if (!fs.existsSync(TASKS_DIR)) {
+        fs.mkdirSync(TASKS_DIR, { recursive: true });
+        console.log(`📁 Created .zenon_devops/tasks/ directory`);
+      }
+
+      // --- 2. Read the user's plan from zenon_devops.md (or inline topic) ---
+      let planRaw = '';
+      const planPath = path.resolve(process.cwd(), devopsPlanFile);
+      if (devopsTaskFilter && devopsTaskFilter.trim().length > 10 && !fs.existsSync(planPath)) {
+        // Inline task declared via --devops-task "..."
+        planRaw = `## Tarea: inline-task\n- **Instrucciones**: ${devopsTaskFilter.trim()}\n`;
+        console.log(`📋 Inline task declared via --devops-task flag.`);
+      } else if (fs.existsSync(planPath)) {
+        planRaw = fs.readFileSync(planPath, 'utf8');
+        console.log(`📋 Plan loaded from: ${devopsPlanFile} (${planRaw.length} chars)`);
+      } else {
+        console.error(`\n❌ Zenon DevOpser: Plan file not found: "${devopsPlanFile}"`);
+        console.error(`   Create a "zenon_devops.md" file in the repository root with your task plan.`);
+        console.error(`   Or use --devops-task "your task description" to declare an inline task.`);
+        console.error(`   Example zenon_devops.md:\n`);
+        console.error(`   ## Tarea: check-node-version`);
+        console.error(`   - **Instrucciones**: Comprueba la version de Node.js instalada y valida que sea >= 18`);
+        console.error(`   - **Ejecutar**: .zenon_devops/tasks/check-node.js  (optional, AI creates it if missing)`);
+        process.exit(1);
+      }
+
+      // --- 3. Parse the plan: extract tasks with their metadata ---
+      /**
+       * parsePlan(planRaw) → Array of task objects:
+       * {
+       *   id: string,           — slug identifier derived from the task heading
+       *   name: string,         — human-readable name
+       *   instructions: string, — natural language instructions for the AI
+       *   scriptPath: string,   — relative path to the script to execute (optional)
+       *   dependsOn: string[],  — list of task IDs this depends on
+       *   env: Object,          — environment key=value pairs to inject
+       *   timeout: number,      — ms timeout for script execution (default 180000)
+       *   continueOnError: bool — if true, pipeline continues even if this task fails
+       * }
+       */
+      function parsePlan(raw) {
+        const tasks = [];
+        const sections = raw.split(/^##\s+Tarea:/im);
+        for (let i = 1; i < sections.length; i++) {
+          const section = sections[i];
+          const lines = section.split('\n');
+          const titleLine = lines[0].trim();
+          const id = titleLine.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          const name = titleLine;
+          let instructions = '';
+          let scriptPath   = '';
+          let dependsOn    = [];
+          let envVars      = {};
+          let timeout      = 180000;
+          let continueOnError = false;
+
+          for (const line of lines.slice(1)) {
+            const l = line.trim();
+            if (/^-\s*\*{0,2}Instrucciones\*{0,2}\s*:/i.test(l)) {
+              instructions = l.replace(/^-\s*\*{0,2}Instrucciones\*{0,2}\s*:\s*/i, '').trim();
+            } else if (/^-\s*\*{0,2}Ejecutar\*{0,2}\s*:/i.test(l)) {
+              scriptPath = l.replace(/^-\s*\*{0,2}Ejecutar\*{0,2}\s*:\s*/i, '').replace(/\(.*?\)/g,'').trim();
+            } else if (/^-\s*\*{0,2}Depende de\*{0,2}\s*:/i.test(l)) {
+              const deps = l.replace(/^-\s*\*{0,2}Depende de\*{0,2}\s*:\s*/i, '');
+              dependsOn = deps.split(',').map(d => d.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')).filter(Boolean);
+            } else if (/^-\s*\*{0,2}Timeout\*{0,2}\s*:/i.test(l)) {
+              const t = parseInt(l.replace(/^-\s*\*{0,2}Timeout\*{0,2}\s*:\s*/i, ''));
+              if (!isNaN(t)) timeout = t * 1000;
+            } else if (/^-\s*\*{0,2}Continuar si falla\*{0,2}\s*:/i.test(l)) {
+              continueOnError = /true|si|yes/i.test(l);
+            } else if (/^-\s*\*{0,2}Env\*{0,2}\s*:/i.test(l)) {
+              const envLine = l.replace(/^-\s*\*{0,2}Env\*{0,2}\s*:\s*/i, '');
+              envLine.split(',').forEach(pair => {
+                const [k, ...vParts] = pair.split('=');
+                if (k && vParts.length) envVars[k.trim()] = vParts.join('=').trim();
+              });
+            }
+          }
+
+          if (!id) continue;
+          tasks.push({ id, name, instructions, scriptPath, dependsOn, env: envVars, timeout, continueOnError });
+        }
+        return tasks;
+      }
+
+      // --- 4. Extract optional global settings from the plan ---
+      function extractGlobalSettings(raw) {
+        const settings = { email: '', webhook: '' };
+        const emailMatch = raw.match(/^##?\s*Destinatario[^\n]*\n([^\n]+)/im);
+        if (emailMatch) settings.email = emailMatch[1].trim().replace(/^[-*]\s*/, '');
+        const webhookMatch = raw.match(/^##?\s*Webhook[^\n]*\n([^\n]+)/im);
+        if (webhookMatch) settings.webhook = webhookMatch[1].trim().replace(/^[-*]\s*/, '');
+        return settings;
+      }
+
+      // --- 5. Resolve execution order via topological sort (Kahn's algorithm) ---
+      function topologicalSort(tasks) {
+        const idToTask = {};
+        for (const t of tasks) idToTask[t.id] = t;
+        const inDegree = {};
+        const adjacency = {};
+        for (const t of tasks) {
+          inDegree[t.id] = (inDegree[t.id] || 0);
+          adjacency[t.id] = adjacency[t.id] || [];
+          for (const dep of t.dependsOn) {
+            if (!idToTask[dep]) {
+              console.warn(`  ⚠️  Task "${t.id}" depends on unknown task "${dep}" — skipping dependency`);
+              continue;
+            }
+            adjacency[dep] = adjacency[dep] || [];
+            adjacency[dep].push(t.id);
+            inDegree[t.id] = (inDegree[t.id] || 0) + 1;
+          }
+        }
+        const queue = tasks.filter(t => (inDegree[t.id] || 0) === 0).map(t => t.id);
+        const sorted = [];
+        while (queue.length > 0) {
+          const current = queue.shift();
+          sorted.push(idToTask[current]);
+          for (const neighbor of (adjacency[current] || [])) {
+            inDegree[neighbor]--;
+            if (inDegree[neighbor] === 0) queue.push(neighbor);
+          }
+        }
+        if (sorted.length < tasks.length) {
+          console.warn('  ⚠️  Circular dependency detected in task plan. Executing remaining tasks in declaration order.');
+          for (const t of tasks) {
+            if (!sorted.find(s => s.id === t.id)) sorted.push(t);
+          }
+        }
+        return sorted;
+      }
+
+      // --- 6. AI Lambda Generator: ask the AI to write a Node.js script ---
+      async function generateLambdaScript(task, aiChain, cachedCtx) {
+        console.log(`  🤖 Generating AI script for task: "${task.name}"...`);
+        const scriptSystemInstruction = `You are "Zenon DevOpser", an autonomous DevOps AI engineer.
+Your job is to write a self-contained, executable Node.js script that fulfills the user's task description EXACTLY.
+
+RULES:
+- The script must use ONLY built-in Node.js modules (fs, path, child_process, https, http, crypto, os, url, etc.).
+- Do NOT use npm packages or require anything not in the Node.js standard library.
+- The script must exit with process.exit(0) on success and process.exit(1) on failure.
+- Include console.log statements to show clear progress updates to the user.
+- Capture and log relevant output/results so Zenon can include them in the final report.
+- Handle errors gracefully with try/catch and meaningful error messages.
+- Do NOT include markdown fences, explanations, or any text outside the JavaScript code itself.
+- Output ONLY the raw JavaScript code. Start directly with the first line of code.
+${cachedCtx ? `\n=== REPOSITORY CONTEXT ===\n${cachedCtx.slice(0, 2000)}\n=========================` : ''}`;
+
+        const scriptUserPrompt = `Write a Node.js script that does the following:\n\n${task.instructions}\n\nThe script will be saved as: ${task.scriptPath || `.zenon_devops/tasks/${task.id}.js`}\nOutput only the raw JavaScript code.`;
+
+        const result = await callWithFallback(aiChain, 'correct', scriptSystemInstruction, scriptUserPrompt);
+        let code = result.text.trim();
+        // Strip markdown code fences if the model accidentally included them
+        code = code.replace(/^```(?:javascript|js|node)?\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+        return code;
+      }
+
+      // --- 7. Run a script safely in a sandboxed subprocess ---
+      function runScript(scriptPath, taskEnv, timeoutMs) {
+        const absPath = path.resolve(process.cwd(), scriptPath);
+        if (!fs.existsSync(absPath)) {
+          return { success: false, output: `Script not found: ${absPath}`, exitCode: 127 };
+        }
+        const mergedEnv = { ...process.env, ...taskEnv };
+        console.log(`  ▶️  Running: node ${scriptPath}`);
+        try {
+          const output = execSync(`node "${absPath}"`, {
+            cwd: process.cwd(),
+            encoding: 'utf8',
+            timeout: timeoutMs,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            env: mergedEnv
+          });
+          return { success: true, output: output.trim(), exitCode: 0 };
+        } catch (err) {
+          const output = ((err.stdout || '') + '\n' + (err.stderr || '')).trim();
+          return { success: false, output: output, exitCode: err.status || 1 };
+        }
+      }
+
+      // --- 8. Self-Healing Engine: ask the AI to fix a broken script ---
+      async function healScript(task, scriptPath, errorOutput, scriptCode, aiChain) {
+        console.log(`  🛡️  Self-Heal: asking AI to fix script for task "${task.name}"...`);
+        const healSystemInstruction = `You are "Zenon DevOpser", an autonomous self-healing DevOps AI.
+A Node.js script you previously wrote has failed. Your job is to analyze the error output and produce a corrected version of the script.
+
+RULES:
+- Output ONLY the raw corrected JavaScript code. No explanations, no markdown fences.
+- Use ONLY built-in Node.js modules.
+- Fix the root cause of the error shown in the logs.
+- Preserve the original intent of the script.`;
+
+        const healUserPrompt = `=== ORIGINAL TASK DESCRIPTION ===\n${task.instructions}\n\n=== FAILED SCRIPT CODE ===\n${scriptCode}\n\n=== ERROR OUTPUT ===\n${errorOutput.slice(0, 3000)}\n\nFix the script. Output only the corrected raw JavaScript code.`;
+
+        const result = await callWithFallback(aiChain, 'correct', healSystemInstruction, healUserPrompt);
+        let code = result.text.trim();
+        code = code.replace(/^```(?:javascript|js|node)?\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+        return code;
+      }
+
+      // --- 9. Webhook Notification ---
+      async function sendWebhookNotification(webhookUrl, payload) {
+        try {
+          const { https: httpsModule, http: httpModule } = { https: require('https'), http: require('http') };
+          const parsedUrl = new URL(webhookUrl);
+          const body = JSON.stringify(payload);
+          const opts = {
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+          };
+          const mod = parsedUrl.protocol === 'https:' ? httpsModule : httpModule;
+          await new Promise((resolve, reject) => {
+            const req = mod.request(opts, (res) => {
+              res.on('data', () => {});
+              res.on('end', resolve);
+            });
+            req.on('error', reject);
+            req.write(body);
+            req.end();
+          });
+          console.log(`  📡 Webhook notification sent to: ${parsedUrl.hostname}`);
+        } catch (e) {
+          console.warn(`  ⚠️  Webhook notification failed: ${e.message}`);
+        }
+      }
+
+      // =====================================================================
+      // MAIN DEVOPSER EXECUTION PIPELINE
+      // =====================================================================
+      const globalSettings = extractGlobalSettings(planRaw);
+      const effectiveEmail = notifyEmail || globalSettings.email || '';
+      const effectiveWebhook = notifyWebhook || globalSettings.webhook || '';
+
+      let allTasks = parsePlan(planRaw);
+
+      if (allTasks.length === 0) {
+        console.error('\n❌ No tasks found in the plan file.');
+        console.error('   Make sure your zenon_devops.md uses "## Tarea: task-name" headings.');
+        process.exit(1);
+      }
+
+      // Filter tasks if --devops-task flag was used
+      if (devopsTaskFilter && devopsTaskFilter.trim()) {
+        const filterSlug = devopsTaskFilter.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const filtered = allTasks.filter(t => t.id.includes(filterSlug) || t.name.toLowerCase().includes(devopsTaskFilter.toLowerCase()));
+        if (filtered.length > 0) {
+          allTasks = filtered;
+          console.log(`🔎 Task filter applied: running ${filtered.length} matching task(s)`);
+        } else {
+          console.warn(`  ⚠️  No tasks matched filter "${devopsTaskFilter}". Running all tasks.`);
+        }
+      }
+
+      // Topological sort to resolve dependencies
+      const orderedTasks = topologicalSort(allTasks);
+      console.log(`\n📋 Task execution plan (${orderedTasks.length} task(s)):`);
+      orderedTasks.forEach((t, i) => {
+        const deps = t.dependsOn.length ? ` [after: ${t.dependsOn.join(', ')}]` : '';
+        console.log(`  ${i+1}. ${t.name} (${t.id})${deps}`);
+      });
+      console.log('');
+
+      // ---- EXECUTE TASKS ----
+      const taskResults = [];
+      const completedTaskIds = new Set();
+      const failedTaskIds = new Set();
+      const startTime = Date.now();
+
+      for (const task of orderedTasks) {
+        // Check if dependencies have all succeeded
+        const blockedByFailed = task.dependsOn.filter(dep => failedTaskIds.has(dep));
+        if (blockedByFailed.length > 0) {
+          console.log(`  ⏭️  Skipping task "${task.name}" — blocked by failed dependency: ${blockedByFailed.join(', ')}`);
+          taskResults.push({ task, status: 'skipped', output: `Blocked by failed dependency: ${blockedByFailed.join(', ')}`, scriptPath: '', duration: 0 });
+          failedTaskIds.add(task.id);
+          continue;
+        }
+
+        console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🔧 Task [${orderedTasks.indexOf(task)+1}/${orderedTasks.length}]: ${task.name}`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+        const taskStart = Date.now();
+        let resolvedScriptPath = task.scriptPath;
+        let scriptCode = '';
+
+        // Determine the script path
+        if (!resolvedScriptPath) {
+          resolvedScriptPath = `.zenon_devops/tasks/${task.id}.js`;
+        }
+
+        const absScriptPath = path.resolve(process.cwd(), resolvedScriptPath);
+
+        // If the script does not exist AND we have instructions, generate it with AI
+        if (!fs.existsSync(absScriptPath) && task.instructions) {
+          console.log(`  📝 Script not found. AI will generate it at: ${resolvedScriptPath}`);
+          scriptCode = await generateLambdaScript({ ...task, scriptPath: resolvedScriptPath }, chain, cachedKnowledge);
+          const scriptDir = path.dirname(absScriptPath);
+          if (!fs.existsSync(scriptDir)) fs.mkdirSync(scriptDir, { recursive: true });
+          fs.writeFileSync(absScriptPath, scriptCode, 'utf8');
+          console.log(`  ✅ AI-generated script saved: ${resolvedScriptPath}`);
+        } else if (fs.existsSync(absScriptPath)) {
+          scriptCode = fs.readFileSync(absScriptPath, 'utf8');
+          console.log(`  📂 Using existing script: ${resolvedScriptPath}`);
+        } else if (!task.instructions) {
+          console.error(`  ❌ Task "${task.name}" has no instructions and no script file at "${resolvedScriptPath}".`);
+          taskResults.push({ task, status: 'error', output: 'No instructions and no script file found.', scriptPath: resolvedScriptPath, duration: 0 });
+          failedTaskIds.add(task.id);
+          continue;
+        }
+
+        // Run the script
+        let runResult = runScript(resolvedScriptPath, task.env, task.timeout);
+        const duration = Date.now() - taskStart;
+
+        if (!runResult.success && selfHeal && task.instructions) {
+          // Self-Healing: try to fix the script and re-run once
+          console.log(`  ❌ Script failed (exit code: ${runResult.exitCode}). Self-healing enabled — attempting auto-fix...`);
+          console.log(`  --- Error output ---\n${runResult.output.slice(0, 1000)}\n  ---`);
+
+          const fixedCode = await healScript(task, resolvedScriptPath, runResult.output, scriptCode, chain);
+          fs.writeFileSync(absScriptPath, fixedCode, 'utf8');
+          console.log(`  🛡️  Healed script saved. Re-running...`);
+
+          runResult = runScript(resolvedScriptPath, task.env, task.timeout);
+          if (runResult.success) {
+            console.log(`  ✅ Self-healing succeeded! Task "${task.name}" now passes.`);
+          } else {
+            console.log(`  ⚠️  Self-healing attempted but task still fails. Manual review required.`);
+          }
+        }
+
+        const taskStatus = runResult.success ? 'success' : (task.continueOnError ? 'warning' : 'failure');
+
+        if (runResult.success) {
+          console.log(`  ✅ Task "${task.name}" completed successfully (${(duration/1000).toFixed(1)}s)`);
+          completedTaskIds.add(task.id);
+        } else {
+          console.log(`  ❌ Task "${task.name}" failed (exit code: ${runResult.exitCode}) (${(duration/1000).toFixed(1)}s)`);
+          if (task.continueOnError) {
+            console.log(`  ℹ️  continueOnError=true — pipeline will continue.`);
+            completedTaskIds.add(task.id);
+          } else {
+            failedTaskIds.add(task.id);
+          }
+        }
+
+        if (runResult.output) {
+          const preview = runResult.output.slice(0, 500);
+          console.log(`  📤 Output preview:\n${preview}${runResult.output.length > 500 ? '\n  [... truncated ...]' : ''}`);
+        }
+
+        taskResults.push({ task, status: taskStatus, output: runResult.output, scriptPath: resolvedScriptPath, duration });
+      }
+
+      // =====================================================================
+      // BUILD FINAL REPORT
+      // =====================================================================
+      const totalDuration = Date.now() - startTime;
+      const successCount = taskResults.filter(r => r.status === 'success').length;
+      const failureCount = taskResults.filter(r => r.status === 'failure').length;
+      const warningCount = taskResults.filter(r => r.status === 'warning').length;
+      const skippedCount = taskResults.filter(r => r.status === 'skipped').length;
+      const overallSuccess = failureCount === 0 && skippedCount === 0;
+
+      const statusEmoji = overallSuccess ? '✅' : (failureCount > 0 ? '❌' : '⚠️');
+      const statusLabel = overallSuccess ? 'ALL TASKS SUCCEEDED' : (failureCount > 0 ? 'SOME TASKS FAILED' : 'COMPLETED WITH WARNINGS');
+
+      let reportMd = '';
+      if (isCI) {
+        reportMd += `### <img src="${LOGO_BASE_URL}/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — DevOpser\n\n`;
+        reportMd += `#### <img src="${LOGO_BASE_URL}/logo_zenon_devopser.png" height="20" align="absmiddle" /> DevOps Execution Report\n\n`;
+      } else {
+        reportMd += `# Zenon Polis — DevOpser Report\n\n`;
+        reportMd += `## DevOps Execution Report\n\n`;
+      }
+
+      reportMd += `${statusEmoji} **${statusLabel}** — ${orderedTasks.length} task(s) in ${(totalDuration/1000).toFixed(1)}s\n\n`;
+      reportMd += `| Metric | Value |\n|---|---|\n`;
+      reportMd += `| ✅ Succeeded | ${successCount} |\n`;
+      reportMd += `| ❌ Failed | ${failureCount} |\n`;
+      reportMd += `| ⚠️ Warning (continued) | ${warningCount} |\n`;
+      reportMd += `| ⏭️ Skipped | ${skippedCount} |\n`;
+      reportMd += `| ⏱️ Total Duration | ${(totalDuration/1000).toFixed(1)}s |\n`;
+      reportMd += `| 🛡️ Self-Heal | ${selfHeal ? 'Enabled' : 'Disabled'} |\n\n`;
+
+      reportMd += `## Task Results\n\n`;
+      for (const result of taskResults) {
+        const icon = result.status === 'success' ? '✅' : result.status === 'failure' ? '❌' : result.status === 'warning' ? '⚠️' : '⏭️';
+        reportMd += `### ${icon} ${result.task.name} (\`${result.task.id}\`)\n\n`;
+        if (result.scriptPath) reportMd += `**Script**: \`${result.scriptPath}\`  \n`;
+        reportMd += `**Status**: ${result.status.toUpperCase()} | **Duration**: ${(result.duration/1000).toFixed(1)}s\n\n`;
+        if (result.output && result.output.trim()) {
+          const outputPreview = result.output.slice(0, 2000);
+          reportMd += `<details>\n<summary>Output Log</summary>\n\n\`\`\`\n${outputPreview}${result.output.length > 2000 ? '\n... [truncated]' : ''}\n\`\`\`\n\n</details>\n\n`;
+        }
+      }
+
+      // AI summary analysis of the entire run
+      if (taskResults.length > 0) {
+        console.log('\n🤖 Zenon DevOpser AI is generating the execution summary...');
+        const summarySystemInstruction = `You are "Zenon DevOpser", a senior DevOps AI analyst.
+You have just orchestrated and executed a series of automation tasks. Analyze the results and provide a concise, actionable summary.
+Write in structured Markdown. Be direct and technical. Do not include greetings or filler text.`;
+
+        const summaryUserPrompt = `Plan file: ${devopsPlanFile}\nSelf-Heal: ${selfHeal ? 'enabled' : 'disabled'}\n\n=== EXECUTION RESULTS ===\n${taskResults.map(r =>
+          `TASK: ${r.task.name} (${r.task.id})\nStatus: ${r.status}\nOutput: ${r.output.slice(0, 800)}`
+        ).join('\n\n---\n\n')}\n\nProvide:\n1. A brief executive summary (2-3 sentences)\n2. Key findings or notable outputs from each task\n3. Any recommended follow-up actions or warnings\n4. Overall pipeline health assessment`;
+
+        try {
+          const summaryResult = await callWithFallback(chain, 'assist', summarySystemInstruction, summaryUserPrompt);
+          reportMd += `## 🤖 AI Executive Summary\n\n${summaryResult.text}\n\n`;
+          console.log(`  ✅ AI summary generated using [${summaryResult.provider.toUpperCase()}] ${summaryResult.model}`);
+        } catch (e) {
+          console.warn(`  ⚠️  Could not generate AI summary: ${e.message}`);
+        }
+      }
+
+      // Write report
+      if (isCI && process.env.GITHUB_STEP_SUMMARY) {
+        fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, reportMd);
+        console.log('\n📊 Report published to GitHub Actions Job Summary.');
+      } else {
+        const localReport = reportMd
+          .replace(/### <img[^>]*> /g, '# ')
+          .replace(/#### <img[^>]*> /g, '## ');
+        fs.writeFileSync('zenon_report.md', localReport, 'utf8');
+        console.log('\n📊 Report written to zenon_report.md');
+      }
+      console.log(reportMd.slice(0, 1500));
+
+      // =====================================================================
+      // OPTIONAL NOTIFICATIONS
+      // =====================================================================
+      if (effectiveWebhook && effectiveWebhook.startsWith('http')) {
+        // Discord / Slack / Generic webhook
+        const webhookPayload = {
+          text: `${statusEmoji} **Zenon DevOpser** — ${statusLabel}`,
+          content: `${statusEmoji} **Zenon DevOpser** — ${statusLabel}`,
+          embeds: [{
+            title: `Zenon DevOpser — ${statusLabel}`,
+            color: overallSuccess ? 0x00cc66 : 0xff4444,
+            description: `**Plan**: \`${devopsPlanFile}\`\n**Tasks**: ${orderedTasks.length} | ✅ ${successCount} | ❌ ${failureCount} | ⚠️ ${warningCount} | ⏭️ ${skippedCount}\n**Duration**: ${(totalDuration/1000).toFixed(1)}s`,
+            fields: taskResults.map(r => ({
+              name: `${r.status === 'success' ? '✅' : r.status === 'failure' ? '❌' : r.status === 'warning' ? '⚠️' : '⏭️'} ${r.task.name}`,
+              value: r.output.slice(0, 200) || '(no output)',
+              inline: false
+            })).slice(0, 5)
+          }],
+          attachments: [{
+            color: overallSuccess ? 'good' : 'danger',
+            title: `Zenon DevOpser — ${statusLabel}`,
+            text: `Tasks: ${orderedTasks.length} | ✅ ${successCount} | ❌ ${failureCount}`
+          }]
+        };
+        await sendWebhookNotification(effectiveWebhook, webhookPayload);
+      }
+
+      if (effectiveEmail && isCI) {
+        // Email notification via GitHub Actions step (documented in workflow)
+        console.log(`\n📧 Email notification target: ${effectiveEmail}`);
+        console.log(`   To send emails, configure the "dawidd6/action-send-mail" step in your workflow.`);
+        console.log(`   The zenon_report.md file contains the full report to include in the email body.`);
+      } else if (effectiveEmail && !isCI) {
+        console.log(`\n📧 Email notification target: ${effectiveEmail}`);
+        console.log(`   Local email sending requires PowerShell Send-MailMessage or a mail relay.`);
+        console.log(`   The zenon_report.md file contains the full report for your email body.`);
+      }
+
+      console.log(`\n🏁 Zenon DevOpser finished. ${statusEmoji} ${statusLabel}`);
+      if (failureCount > 0) process.exit(1);
+      return;
+
+    } catch (err) {
+      console.error('❌ Error durante el modo DevOpser:', err.message);
+      console.error(err.stack);
       process.exit(1);
     }
   }

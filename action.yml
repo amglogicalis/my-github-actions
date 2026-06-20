@@ -39,9 +39,29 @@ inputs:
     required: false
     default: ''
   mode:
-    description: 'Operating mode: "assist" (analyses code & suggests improvements), "correct" (directly modifies files & commits), "objective" (implements a goal described in a markdown file), "trainer" (trains Zenon on a technology), "updater" (synchronizes documentation) or "tester" (runs & diagnoses tests)'
+    description: 'Operating mode: "assist", "correct", "objective", "trainer", "updater", "tester", "devops"'
     required: false
     default: 'assist'
+  devops-plan-file:
+    description: 'Path to the DevOpser plan file (default: zenon_devops.md). Used only in "devops" mode.'
+    required: false
+    default: 'zenon_devops.md'
+  devops-task:
+    description: 'Optional: name/slug of a specific task to filter and run. Also accepts an inline task description if no plan file exists.'
+    required: false
+    default: ''
+  self-heal:
+    description: 'If "true", DevOpser will auto-fix failing scripts using AI and retry them. Used only in "devops" mode.'
+    required: false
+    default: 'false'
+  notify-email:
+    description: 'Email address for the DevOpser execution report (optional, silent by default).'
+    required: false
+    default: ''
+  notify-webhook:
+    description: 'Discord/Slack/custom webhook URL for DevOpser notifications (optional).'
+    required: false
+    default: ''
   objective-file:
     description: 'Path (relative to repo root) to the markdown file containing the objective for "objective" mode (default: zenon_objective.md)'
     required: false
@@ -100,6 +120,11 @@ runs:
         elif [ "$INPUT_MODE" = "tester" ]; then
           echo "Test Cmd     : ${{ inputs.test-cmd }}"
           echo "Auto Fix     : ${{ inputs.auto-fix }}"
+        elif [ "$INPUT_MODE" = "devops" ]; then
+          echo "Plan File    : ${{ inputs.devops-plan-file }}"
+          echo "Task Filter  : ${INPUT_DEVOPS_TASK:-'(all tasks)'}"
+          echo "Self-Heal    : ${{ inputs.self-heal }}"
+          echo "Notify Email : ${INPUT_NOTIFY_EMAIL:-'(silent mode)'}"
         fi
         echo "========================"
       env:
@@ -114,6 +139,8 @@ runs:
         INPUT_MODE: ${{ inputs.mode }}
         INPUT_TOPIC: ${{ inputs.topic }}
         INPUT_OBJECTIVE: ${{ inputs.objective }}
+        INPUT_DEVOPS_TASK: ${{ inputs.devops-task }}
+        INPUT_NOTIFY_EMAIL: ${{ inputs.notify-email }}
 
     - name: Run Zenon AI Assistant
       shell: bash
@@ -135,5 +162,10 @@ runs:
         INPUT_TOPIC: ${{ inputs.topic }}
         INPUT_TEST_CMD: ${{ inputs.test-cmd }}
         INPUT_AUTO_FIX: ${{ inputs.auto-fix }}
+        INPUT_DEVOPS_PLAN_FILE: ${{ inputs.devops-plan-file }}
+        INPUT_DEVOPS_TASK: ${{ inputs.devops-task }}
+        INPUT_SELF_HEAL: ${{ inputs.self-heal }}
+        INPUT_NOTIFY_EMAIL: ${{ inputs.notify-email }}
+        INPUT_NOTIFY_WEBHOOK: ${{ inputs.notify-webhook }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
 

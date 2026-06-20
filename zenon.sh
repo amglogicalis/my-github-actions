@@ -19,6 +19,15 @@
 #   ./zenon.sh --mode tester --auto-fix  # run tests and auto-fix/commit changes
 #   ./zenon.sh --mode tester --test-cmd "npm test" # run tests with custom command
 #   ./zenon.sh --mode tester --topic "auth.test.js" # run tests focusing on auth.test.js
+#
+#   ---- Zenon DevOpser — Autonomous DevOps Operator & Lambda Platform ----
+#   ./zenon.sh --mode devops                                    # run all tasks in zenon_devops.md
+#   ./zenon.sh --mode devops --plan-file my_pipeline.md         # custom plan file
+#   ./zenon.sh --mode devops --devops-task "check-ssl"          # run only a specific task
+#   ./zenon.sh --mode devops --self-heal                        # enable AI self-healing on failures
+#   ./zenon.sh --mode devops --notify-webhook "https://discord.com/api/webhooks/..."   # notify Discord
+#   ./zenon.sh --mode devops --notify-email "you@example.com"   # set email report target
+#   ./zenon.sh --mode devops --self-heal --devops-task "my-task" # targeted + self-heal
 # =============================================================================
 set -euo pipefail
 

@@ -187,12 +187,23 @@ Los siguientes agentes y herramientas especializadas están implementados dentro
 #### ⚙️ Zenon DevOpser
 <p align="left">
   <img src="assets/logos/logo_zenon_DevOpser.png" alt="Zenon DevOpser Logo" width="80" align="left" style="margin-right: 15px;" />
-  Es el agente de desarrollo encargado de realizar cambios directos en el código fuente de tu repositorio para resolver bugs complejos detectados de forma estática o para implementar metas de desarrollo concretas a partir de objetivos técnicos definidos por escrito en archivos Markdown.
+  Es el <strong>Operador DevOps Autónomo de Nivel Principal</strong> y la plataforma lambda local integrada en tu repositorio. Permite declarar cualquier automatización en lenguaje natural dentro de <code>zenon_devops.md</code>, y Zenon DevOpser generará físicamente los scripts ejecutables (lambdas) necesarios, los orquestará con resolución de dependencias entre tareas, aplicará auto-sanación ante fallos y producirá un informe completo con resumen de IA.
 </p>
 <br />
 
-* **Comando CLI**: `--mode correct` (para corrección automática en caliente) o `--mode objective` (para implementar objetivos indicando `--objective ruta/fichero.md`).
-* **Acción GHA**: La acción raíz soporta ambos modos a través del input `mode`.
+**¿Qué puede hacer?** — Total libertad de automatización:
+* 🔁 Encadenar tareas complejas con dependencias (ej: audita secretos → compila → ejecuta tests → despliega)
+* 🤖 Generar scripts Node.js desde cero sin escribir código (la IA escribe y guarda el script físicamente)
+* 📂 Usar scripts existentes en `.zenon_devops/tasks/` o combinar ambos
+* 🛡️ Auto-sanar scripts fallidos: si un script falla y `self-heal: true`, la IA lo reescribe y reintenta
+* 📡 Notificar resultados opcionales a Discord, Slack o cualquier webhook, y/o a un correo
+* 🔕 Modo silencioso: si no defines notificaciones, todo se ejecuta localmente sin conexiones externas
+* ⏭️ Saltar tareas bloqueadas por fallos de dependencia automáticamente
+
+* **Comando CLI**: `--mode devops` (acepta `--plan-file`, `--devops-task`, `--self-heal`, `--notify-email`, `--notify-webhook`)
+* **Plan File**: [`zenon_devops.md`](./zenon_devops.md) — declara las tareas, instrucciones, dependencias y notificaciones
+* **Acción GHA**: [.github/actions/devopser/action.yml](./.github/actions/devopser/action.yml)
+* **Workflow GHA**: [.github/workflows/zenon-devopser.yml](./.github/workflows/zenon-devopser.yml)
 
 #### 🧪 Zenon Tester
 <p align="left">
@@ -252,6 +263,23 @@ Utiliza los wrappers CLI [zenon.ps1](./zenon.ps1) (Windows PowerShell) o [zenon.
 
 # 11. Ejecutar tests especificando un comando personalizado y focalizando el error
 .\zenon.ps1 --mode tester --test-cmd "npm run test:unit" --topic "src/auth.js"
+
+# ---- Zenon DevOpser ----
+
+# 12. Ejecutar todas las tareas definidas en zenon_devops.md
+.\zenon.ps1 --mode devops
+
+# 13. Ejecutar solo una tarea específica del plan
+.\zenon.ps1 --mode devops --devops-task "check-environment"
+
+# 14. Usar un plan alternativo con auto-sanación habilitada
+.\zenon.ps1 --mode devops --plan-file my_pipeline.md --self-heal
+
+# 15. Ejecutar el plan y notificar a Discord vía webhook
+.\zenon.ps1 --mode devops --notify-webhook "https://discord.com/api/webhooks/ID/TOKEN"
+
+# 16. Declarar una tarea inline sin archivo de plan
+.\zenon.ps1 --mode devops --devops-task "Comprueba que el puerto 3000 está libre en el sistema"
 ```
 
 ### Uso en GitHub Actions (Flujos CI/CD)
@@ -383,6 +411,19 @@ Puedes usar directamente las sub-acciones específicas de Polis sin invocar la a
     github-token: ${{ secrets.GITHUB_TOKEN }} # Requerido para commits automáticos en auto-fix
 ```
 
+#### ⚡ Zenon DevOpser Action
+```yaml
+- name: Run Zenon DevOpser
+  uses: amglogicalis/Zenon/.github/actions/devopser@main
+  with:
+    devops-plan-file: "zenon_devops.md" # Tu archivo de plan de automatización
+    self-heal: "true"                    # Opcional: auto-reparar scripts fallidos con IA
+    notify-webhook: ${{ secrets.DISCORD_WEBHOOK }} # Opcional: webhook de notificación
+    notify-email: "ops@example.com"      # Opcional: email del informe
+    zenon-api-key: ${{ secrets.ZENON_API_KEY }}
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
 ### C. Desactivar o Activar la Ejecución Automática (Push/PR)
 
 Si deseas desactivar la ejecución automática de los flujos de **Zenon Reviewer** y **Zenon Updater** en cada `push` o `pull_request` y que **solo se ejecuten de forma manual**, puedes configurar una **Variable de Repositorio** (Repository Variable) en los ajustes de tu repositorio **sin modificar ningún archivo YAML**.
@@ -410,6 +451,7 @@ Al ejecutar los flujos manualmente desde la interfaz de GitHub:
 * **Zenon Reviewer**: Puedes escribir un rango de commits en `diff-range` (ej: `HEAD~1`). Si lo dejas vacío, revisará el último commit.
 * **Zenon Updater**: Puedes indicar qué archivos markdown auditar en `docs` (ej: `README.md`). Si lo dejas vacío, auditará todos los documentos del proyecto.
 * **Zenon Tester**: Permite configurar un comando personalizado en `test-cmd` y activar o desactivar el auto-fix con `auto-fix` ('true' o 'false').
+* **Zenon DevOpser**: Permite seleccionar el archivo de plan en `devops-plan-file`, filtrar una tarea con `devops-task`, activar `self-heal`, o configurar notificaciones de webhook/email.
 
 Para **reactivar** la auto-ejecución de los flujos automáticos, cambia el valor de su variable a `false` o elimínala directamente.
 
@@ -463,13 +505,18 @@ TOKEN_GH=ghp_...
 | `cerebras-api-key`  | API Key para Cerebras (Opcional). | No | — |
 | `gh-models-token`   | Token personal para GitHub Models (GH_MODELS_TOKEN) (Opcional). | No | — |
 | `token-gh` | Token alternativo (secret: TOKEN_GH) para GitHub Models. | No | — |
-| `mode` | Modo de ejecución: `assist`, `correct`, `objective`, `trainer`, `reviewer`, `analyzer`, `helper`, `updater` o `tester`. | No | `assist` |
+| `mode` | Modo de ejecución: `assist`, `correct`, `objective`, `trainer`, `reviewer`, `analyzer`, `helper`, `updater`, `tester` o `devops`. | No | `assist` |
 | `objective-file` | Ruta al archivo Markdown que contiene las metas de `objective`. | No | `zenon_objective.md` |
 | `objective` | Texto directo con el objetivo (tiene precedencia sobre `objective-file`). | No | — |
 | `topic` | El tema, framework o tecnología a investigar en modo `trainer` o la consulta del asistente en modo `helper`. | No | — |
 | `docs` | Lista separada por comas de archivos de documentación a verificar y actualizar en modo `updater`. | No | README.md y todos los .md en raíz y carpeta docs/ |
 | `test-cmd` | Comando de test personalizado para ejecutar en modo `tester` (ej: `npm run test:unit`). | No | — |
 | `auto-fix` | Si se establece en `true`, Zenon intentará corregir automáticamente los fallos en modo `tester`. | No | `false` |
+| `devops-plan-file` | Ruta al archivo de plan de automatización para modo `devops`. | No | `zenon_devops.md` |
+| `devops-task` | Nombre/slug de una tarea específica a ejecutar (filtra el plan). También acepta una instrucción inline si no existe archivo de plan. | No | — |
+| `self-heal` | Si `true`, DevOpser reescribe scripts fallidos con IA y los reintenta automáticamente. | No | `false` |
+| `notify-email` | Email al que enviar el informe de ejecución de DevOpser (opcional). | No | — |
+| `notify-webhook` | URL de webhook Discord/Slack para notificar el resultado de DevOpser (opcional). | No | — |
 | `exclude` | Rutas o archivos separados por comas que se deben excluir del análisis. | No | `""` |
 | `reset-stats` | Indica si se deben resetear las estadísticas a cero en modo `analyzer`. | No | `false` |
 

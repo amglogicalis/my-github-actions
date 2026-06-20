@@ -109,18 +109,28 @@ Los siguientes agentes y herramientas especializadas están implementados dentro
 * **Comando CLI**: `--mode helper --topic "Tu pregunta aquí"`
 * **Acción GHA**: [.github/actions/helper/action.yml](./.github/actions/helper/action.yml).
 
+#### 📝 Zenon Updater
+<p align="left">
+  <img src="assets/logos/logo_zenon_updater.png" alt="Zenon Updater Logo" width="80" align="left" style="margin-right: 15px;" />
+  Es el módulo encargado de sincronizar de forma automatizada los cambios del código con la documentación del proyecto. Escanea el repositorio tras un push para verificar si las modificaciones en el código (nuevas funciones, cambio de parámetros o rutas) han dejado obsoletos el README.md o los manuales del proyecto. Si detecta discrepancias, la IA reescribe de forma correcta siguiendo el estilo original las secciones afectadas de la documentación y genera un parche automático.
+</p>
+<br />
+
+* **Prevención de Bucles**: Cuando se ejecuta en integración continua, el commit generado por Zenon Updater incluye la etiqueta `[skip ci]` para prevenir bucles recursivos de ejecución.
+* **Comando CLI**: `--mode updater` (Acepta el parámetro adicional `--docs "lista,archivos.md"` para especificar qué archivos auditar).
+* **Acción GHA**: [.github/actions/updater/action.yml](./.github/actions/updater/action.yml).
+
 #### 🔍 Reviewer, Trainer & DevOpsers
 <p align="center">
   <img src="assets/logos/logo_zenon_reviewer.png" alt="Reviewer" width="70" />
   <img src="assets/logos/logo_zenon_trainer.png" alt="Trainer" width="70" />
   <img src="assets/logos/logo_zenon_DevOpser.png" alt="DevOpser" width="70" />
-  <img src="assets/logos/logo_zenon_updater.png" alt="Updater" width="70" />
   <img src="assets/logos/logo_zenon_tester.png" alt="Tester" width="70" />
 </p>
 
 * **Reviewer** (`--mode reviewer`): Analiza las diferencias del código (`git diff`) y publica reportes técnicos con sugerencias y bugs detectados directamente en los Pull Requests de GitHub. Acción GHA: [.github/actions/reviewer/action.yml](./.github/actions/reviewer/action.yml).
 * **Trainer** (`--mode trainer --topic "..."`): Utiliza el grounding de búsqueda de Google Search para actualizar la base de conocimientos con especificaciones técnicas actuales y documentación fresca en la caché. Acción GHA: [.github/actions/trainer/action.yml](./.github/actions/trainer/action.yml).
-* **DevOpser/Updater/Tester** (`--mode correct` / `--mode objective`): Agentes encargados de modificar código físico en disco, autogenerar tests unitarios y hacer commits automáticos para cumplir con los objetivos técnicos especificados en Markdown.
+* **DevOpser/Tester** (`--mode correct` / `--mode objective`): Agentes encargados de modificar código físico en disco, autogenerar tests unitarios y hacer commits automáticos para cumplir con los objetivos técnicos especificados en Markdown.
 
 ---
 
@@ -151,6 +161,10 @@ Utiliza los wrappers CLI [zenon.ps1](./zenon.ps1) (Windows PowerShell) o [zenon.
 
 # 7. Entrenar a Zenon en una librería o API usando Google Search (Modo Trainer)
 .\zenon.ps1 --mode trainer --topic "Next.js 15 App Router routing conventions"
+
+# 8. Sincronizar automáticamente la documentación con el código (Modo Updater)
+.\zenon.ps1 --mode updater
+.\zenon.ps1 --mode updater --docs "README.md,docs/manual.md"
 ```
 
 ### Uso en GitHub Actions (Flujos CI/CD)
@@ -159,6 +173,8 @@ Puedes definir workflows independientes en tu carpeta `.github/workflows/` para 
 
 * **Workflow de Asistencia (Helper)**: [.github/workflows/zenon-helper.yml](./.github/workflows/zenon-helper.yml)
 * **Workflow de Estadísticas (Analyzer)**: [.github/workflows/zenon-analyzer.yml](./.github/workflows/zenon-analyzer.yml)
+* **Workflow de Sincronización (Updater)**: [.github/workflows/zenon-updater.yml](./.github/workflows/zenon-updater.yml)
+
 
 ---
 
@@ -251,12 +267,22 @@ Puedes usar directamente las sub-acciones específicas de Polis sin invocar la a
 ```
 
 #### Zenon Reviewer Action
-```yaml
 - name: Run Zenon Reviewer
   uses: amglogicalis/Zenon/.github/actions/reviewer@main
   with:
     diff-range: "HEAD~1" # Opcional
     zenon-api-key: ${{ secrets.ZENON_API_KEY }}
+```
+
+#### Zenon Updater Action
+```yaml
+- name: Run Zenon Updater
+  uses: amglogicalis/Zenon/.github/actions/updater@main
+  with:
+    docs: "README.md" # Opcional: lista de archivos markdown a verificar/actualizar
+    zenon-api-key: ${{ secrets.ZENON_API_KEY }}
+    samba-api-key: ${{ secrets.SAMBA_API_KEY }} # Opcional: para fallbacks
+    github-token: ${{ secrets.GITHUB_TOKEN }} # Requerido para commits en CI
 ```
 
 ---
@@ -309,10 +335,11 @@ TOKEN_GH=ghp_...
 | `cerebras-api-key`  | API Key para Cerebras (Opcional). | No | — |
 | `gh-models-token`   | Token personal para GitHub Models (GH_MODELS_TOKEN) (Opcional). | No | — |
 | `token-gh` | Token alternativo (secret: TOKEN_GH) para GitHub Models. | No | — |
-| `mode` | Modo de ejecución: `assist`, `correct`, `objective`, `trainer`, `reviewer`, `analyzer` o `helper`. | No | `assist` |
+| `mode` | Modo de ejecución: `assist`, `correct`, `objective`, `trainer`, `reviewer`, `analyzer`, `helper` o `updater`. | No | `assist` |
 | `objective-file` | Ruta al archivo Markdown que contiene las metas de `objective`. | No | `zenon_objective.md` |
 | `objective` | Texto directo con el objetivo (tiene precedencia sobre `objective-file`). | No | — |
 | `topic` | El tema, framework o tecnología a investigar en modo `trainer` o la consulta del asistente en modo `helper`. | No | — |
+| `docs` | Lista separada por comas de archivos de documentación a verificar y actualizar en modo `updater`. | No | README.md y todos los .md en raíz y carpeta docs/ |
 | `exclude` | Rutas o archivos separados por comas que se deben excluir del análisis. | No | `""` |
 | `reset-stats` | Indica si se deben resetear las estadísticas a cero en modo `analyzer`. | No | `false` |
 

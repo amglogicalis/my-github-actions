@@ -12,6 +12,8 @@
 #   .\zenon.ps1 --mode analyzer                      # show consumption stats and quotas
 #   .\zenon.ps1 --mode analyzer --reset-stats        # reset consumption statistics
 #   .\zenon.ps1 --mode helper --topic "¿cómo funciona la autenticación?"
+#   .\zenon.ps1 --mode updater                       # auto-update docs relative to code changes
+#   .\zenon.ps1 --mode updater --docs "README.md"    # update specific documentation files
 # =============================================================================
 param(
     [Parameter(ValueFromRemainingArguments = $true)]

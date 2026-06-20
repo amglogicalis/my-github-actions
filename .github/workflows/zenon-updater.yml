@@ -1,27 +1,26 @@
-name: Zenon Reviewer
+name: Zenon Updater
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    branches: [ main, master ]
+    paths-ignore:
+      - '**/*.md'
+      - '.zenon_cache.json'
+      - '.gitignore'
   workflow_dispatch:
     inputs:
-      diff-range:
-        description: 'Git diff range or commit hash to analyze (optional, e.g. HEAD~1)'
+      docs:
+        description: 'Archivos de documentación a verificar (opcional, separados por comas)'
         required: false
         default: ''
 
 jobs:
-  review:
-    name: Run Zenon Reviewer
+  update-docs:
+    name: Run Zenon Updater
     runs-on: ubuntu-latest
     
     permissions:
-      contents: read
-      pull-requests: write
+      contents: write
       
     steps:
       - name: Checkout repository
@@ -29,7 +28,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Restore cache to get the general codebase context
+      # Restore cache to get cumulative statistics and codebase knowledge
       - name: Restore Zenon Knowledge Cache
         uses: actions/cache@v4
         with:
@@ -39,10 +38,10 @@ jobs:
             zenon-knowledge-cache-${{ github.ref_name }}-
             zenon-knowledge-cache-
 
-      - name: Run Zenon Reviewer Action
-        uses: ./.github/actions/reviewer
+      - name: Run Zenon Updater Action
+        uses: ./.github/actions/updater
         with:
-          diff-range: ${{ github.event.inputs['diff-range'] || '' }}
+          docs: ${{ github.event.inputs.docs || '' }}
           zenon-api-key: ${{ secrets.ZENON_API_KEY }}
           groq-api-key: ${{ secrets.GROQ_API_KEY }}
           cohere-api-key: ${{ secrets.COHERE_API_KEY }}

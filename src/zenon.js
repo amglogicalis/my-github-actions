@@ -352,6 +352,7 @@ async function selectModelsWithAI(keys, stackInfo, mode, totalSize, userQuery = 
                  : mode === 'objective' ? 'implementacion de objetivo de desarrollo, salida JSON estructurada'
                  : mode === 'trainer'   ? 'entrenamiento de conocimiento, requiere busqueda en Google (Google Search Grounding). Prioriza obligatoriamente modelos del proveedor "gemini" en los primeros lugares de la cadena para que puedan realizar busquedas en la web.'
                  : mode === 'helper'    ? 'asistencia interactiva sobre la base de codigo y resolucion de consultas'
+                 : mode === 'updater'   ? 'sincronizacion de documentacion de texto con el codigo, salida JSON estructurada'
                  : 'revision de codigo, produce informe Markdown';
 
   const selectorSystemInstruction =
@@ -371,7 +372,7 @@ async function selectModelsWithAI(keys, stackInfo, mode, totalSize, userQuery = 
     'REGLAS DE SELECCION:\n' +
     '1. Clasificación de Complejidad: Analiza la consulta o tarea específica del usuario.\n' +
     '   - Si la consulta es descriptiva, simple o de consulta rápida (ej. preguntas generales de arquitectura en modo "helper" como "¿qué lenguajes se usan?" o "¿qué hace este archivo?"), prioriza modelos rápidos y de menor coste (como gemini-flash-lite, gpt-4o-mini o llama-3.1-8b) al principio de la cadena para evitar consumir recursos innecesarios.\n' +
-    '   - Si la tarea implica desarrollo complejo, lógica profunda o escritura/modificación de código (como en modo "correct" u "objective", o consultas complejas de implementación), prioriza modelos insignia de alta capacidad de razonamiento/programación (como gpt-4o, deepseek-v3-2 o gemini-2.5-flash) al principio de la cadena.\n' +
+    '   - Si la tarea implica desarrollo complejo, lógica profunda, escritura/modificación de código o actualización de documentación (como en modo "correct", "objective" o "updater"), prioriza modelos insignia de alta capacidad de razonamiento/programación (como gpt-4o, deepseek-v3-2 o gemini-2.5-flash) al principio de la cadena.\n' +
     '2. Para modo "trainer", prioriza obligatoriamente modelos de "gemini" que soportan búsqueda en Google en los primeros lugares.\n' +
     '3. Para codebases GRANDES o MUY GRANDES (>100KB): prioriza providers con maxInputChars mas alto.\n' +
     '4. El primer modelo de la cadena debe ser el mas capaz y adecuado disponible para el tipo y complejidad de consulta.\n' +
@@ -553,6 +554,8 @@ function parseArgs() {
       args.topic = process.argv[++i];
     } else if ((arg === '--diff' || arg === '-d') && i + 1 < process.argv.length) {
       args.diffRange = process.argv[++i];
+    } else if (arg === '--docs' && i + 1 < process.argv.length) {
+      args.docs = process.argv[++i];
     } else if (arg === '--reset-stats') {
       args.resetStats = true;
     }
@@ -1390,8 +1393,8 @@ async function main() {
     process.exit(1);
   }
 
-  if (!['assist', 'correct', 'objective', 'trainer', 'reviewer', 'analyzer', 'helper'].includes(mode)) {
-    console.error(`❌ Modo "${mode}" no reconocido. Modos disponibles: "assist", "correct", "objective", "trainer", "reviewer", "analyzer", "helper".`);
+  if (!['assist', 'correct', 'objective', 'trainer', 'reviewer', 'analyzer', 'helper', 'updater'].includes(mode)) {
+    console.error(`❌ Modo "${mode}" no reconocido. Modos disponibles: "assist", "correct", "objective", "trainer", "reviewer", "analyzer", "helper", "updater".`);
     process.exit(1);
   }
 
@@ -1664,6 +1667,8 @@ async function main() {
     userQuery = helperQuery;
   } else if (mode === 'analyzer') {
     userQuery = 'Análisis de consumo de tokens y cuotas de uso';
+  } else if (mode === 'updater') {
+    userQuery = 'Sincronización automática de documentación con cambios de código';
   }
 
   // Intentar la selección inteligente mediante IA primero
@@ -1730,7 +1735,7 @@ async function main() {
       if (cacheData.knowledge) {
         previousKnowledge = cacheData.knowledge;
       }
-      if (mode !== 'trainer' && (cacheData.fingerprint === fingerprint || mode === 'reviewer' || mode === 'helper') && cacheData.knowledge) {
+      if (mode !== 'trainer' && (cacheData.fingerprint === fingerprint || mode === 'reviewer' || mode === 'helper' || mode === 'updater') && cacheData.knowledge) {
         cachedKnowledge = cacheData.knowledge;
         cacheLoaded = true;
         console.log('ℹ️  Cargada base de conocimiento contextual desde la caché (.zenon_cache.json)');
@@ -2105,6 +2110,202 @@ Please answer the user query based on the codebase knowledge base and the live c
       return;
     } catch (err) {
       console.error('❌ Error durante la consulta del asistente:', err.message);
+      process.exit(1);
+    }
+  }
+
+  // =============================================================================
+  // PASO 13: Modo Updater — Sincronización Automática de Documentación
+  // =============================================================================
+  if (mode === 'updater') {
+    try {
+      console.log('📝 Zenon Updater is checking for code changes to update documentation...');
+
+      // 1. Get git diff of changes (excluding markdown files and internal files)
+      const updaterExclude = exclude ? `${exclude},*.md,.gitignore,.zenon_cache.json` : '*.md,.gitignore,.zenon_cache.json';
+      const diffContent = getGitDiff(diffRange, updaterExclude);
+
+      if (!diffContent || !diffContent.trim()) {
+        console.log('✅ No code changes detected. Documentation is already up to date.');
+        if (isCI && process.env.GITHUB_STEP_SUMMARY) {
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### <img src="${LOGO_BASE_URL}/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Updater\n\nNo se detectaron cambios en el código que requieran actualizar la documentación.\n`);
+        }
+        return;
+      }
+
+      console.log(`Found code changes with a diff of ${diffContent.length} characters.`);
+
+      // 2. Discover target documentation files to check/update
+      let docFiles = [];
+      const explicitDocs = cliArgs.docs || process.env.INPUT_DOCS || '';
+      if (explicitDocs) {
+        docFiles = explicitDocs.split(',').map(f => f.trim()).filter(Boolean);
+      } else {
+        // Auto-detect root md files and docs/ folder md files
+        docFiles = files.filter(file => {
+          const lower = file.toLowerCase();
+          const ext = lower.split('.').pop();
+          if (ext !== 'md') return false;
+
+          // Exclude internal files
+          const base = path.basename(file).toLowerCase();
+          if ([
+            'zenon_plan.md',
+            'zenon_objective.md',
+            'zenon_report.md',
+            'changelog.md',
+            'contributing.md',
+            'license.md'
+          ].includes(base)) {
+            return false;
+          }
+
+          // Must be in root or docs/ folder
+          const dir = path.dirname(file);
+          return dir === '.' || dir === 'docs';
+        });
+      }
+
+      if (docFiles.length === 0) {
+        console.log('ℹ️ No documentation files found to update.');
+        return;
+      }
+
+      console.log(`Target documentation files to audit: ${docFiles.join(', ')}`);
+
+      // 3. Read target documentation files
+      const docPayloads = [];
+      for (const file of docFiles) {
+        if (fs.existsSync(file)) {
+          try {
+            const content = fs.readFileSync(file, 'utf8');
+            docPayloads.push({ path: file, content });
+          } catch (e) {
+            console.warn(`  ⚠️ Could not read document file: ${file}. Skipping.`);
+          }
+        }
+      }
+
+      if (docPayloads.length === 0) {
+        console.log('ℹ️ No readable documentation contents found.');
+        return;
+      }
+
+      // 4. Call LLM for each document
+      const modifiedDocs = [];
+
+      for (const doc of docPayloads) {
+        console.log(`\n🔍 Auditing documentation file: ${doc.path}...`);
+
+        const updaterSystemInstruction = `You are "Zenon Updater", a principal technical documentation architect and software writer.
+Your task is to synchronize repository documentation with recent code changes.
+
+CRITICAL RULES:
+- Analyze the recent code changes (git diff) and compare them with the current document content.
+- If the changes in the code have left any parts of the document outdated (e.g. modified CLI flags, changed routes, renamed functions, new setups), update only the affected sections.
+- Make ONLY precise, additive, or selective updates. Do NOT rewrite or rephrase unaffected sections. Keep the rest of the document 100% identical.
+- Follow the document's original style, formatting, tone, emojis, header logos, and layout exactly.
+- Return ONLY the raw JSON output in the specified schema. No conversational filler, no markdown fences outside the JSON.`;
+
+        const updaterUserPrompt = `=== RECENT CODE CHANGES (GIT DIFF) ===
+${diffContent}
+
+=== CURRENT DOCUMENT PATH: ${doc.path} ===
+${doc.content}
+
+=== OBJECTIVE ===
+Analyze if the code changes require any updates to this document. If updates are needed, generate the updated complete content. If no updates are needed, return an empty files array.
+
+Return ONLY raw JSON with this exact schema (no markdown formatting, no code fences):
+{
+  "files": [
+    { "path": "${doc.path}", "content": "<complete updated file content>", "reason": "<brief explanation of changes made>" }
+  ]
+}`;
+
+        console.log(`🤖 Zenon is analyzing "${doc.path}"...`);
+        const updaterResult = await callWithFallback(chain, 'correct', updaterSystemInstruction, updaterUserPrompt);
+        const rawResponse = updaterResult.text;
+        
+        let result = extractJSON(rawResponse);
+        if (!result) {
+          console.warn(`  ⚠️ Could not parse JSON response for ${doc.path}. Retrying with remaining chain...`);
+          const usedIndex = chain.findIndex(e => e.provider === updaterResult.provider && e.model === updaterResult.model);
+          const remainingChain = usedIndex >= 0 ? chain.slice(usedIndex + 1) : [];
+          if (remainingChain.length > 0) {
+            const retryResult = await callWithFallback(remainingChain, 'correct', updaterSystemInstruction, updaterUserPrompt);
+            result = extractJSON(retryResult.text);
+          }
+        }
+
+        if (result && result.files && result.files.length > 0) {
+          const fileUpdate = result.files[0];
+          const newContent = fileUpdate.content;
+          const reason = fileUpdate.reason || 'Auto-synchronized with code changes.';
+
+          fs.writeFileSync(doc.path, newContent, 'utf8');
+          modifiedDocs.push({ path: doc.path, reason });
+          console.log(`✅ File updated: ${doc.path}`);
+          console.log(`   Reason: ${reason}`);
+        } else {
+          console.log(`✅ No updates needed for: ${doc.path}`);
+        }
+      }
+
+      // 5. Commit and push in GHA CI, or write report
+      if (modifiedDocs.length === 0) {
+        console.log('\n✅ All target documentation is already synchronized. No changes applied.');
+        if (isCI && process.env.GITHUB_STEP_SUMMARY) {
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### <img src="${LOGO_BASE_URL}/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Updater\n\nToda la documentación está sincronizada con los últimos cambios de código.\n`);
+        }
+        return;
+      }
+
+      if (isCI) {
+        let summaryContent = `### <img src="${LOGO_BASE_URL}/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Updater\n\n`;
+        summaryContent += `#### <img src="${LOGO_BASE_URL}/logo_zenon_updater.png" height="20" align="absmiddle" /> Documentación Sincronizada\n\n`;
+        summaryContent += `Se han detectado discrepancias y se ha actualizado automáticamente la documentación del proyecto:\n\n`;
+        for (const doc of modifiedDocs) {
+          summaryContent += `- **${doc.path}**: ${doc.reason}\n`;
+        }
+        if (process.env.GITHUB_STEP_SUMMARY) {
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent);
+        }
+
+        try {
+          console.log('Configuring git credentials...');
+          runGit(['config', '--local', 'user.email', 'github-actions[bot]@users.noreply.github.com']);
+          runGit(['config', '--local', 'user.name', 'github-actions[bot]']);
+
+          for (const doc of modifiedDocs) {
+            runGit(['add', doc.path]);
+          }
+
+          const staged = runGit(['diff', '--name-only', '--cached']);
+          if (staged) {
+            console.log('Committing changes...');
+            runGit(['commit', '-m', 'docs(zenon): auto-update documentation [skip ci]']);
+            console.log('Pushing changes...');
+            runGit(['push']);
+            console.log('Successfully committed and pushed documentation updates!');
+          }
+        } catch (e) {
+          console.error('Error committing documentation updates:', e.message);
+        }
+      } else {
+        let localReport = `# <img src="assets/logos/logo_polis_zenon.png" height="32" /> Zenon Polis — Updater Report\n\n`;
+        localReport += `## <img src="assets/logos/logo_zenon_updater.png" height="26" /> Sincronización Completada\n\n`;
+        localReport += `Se han actualizado los siguientes archivos de documentación para reflejar los cambios en el código:\n\n`;
+        for (const doc of modifiedDocs) {
+          localReport += `- **${doc.path}**: ${doc.reason}\n`;
+        }
+        fs.writeFileSync('zenon_report.md', localReport, 'utf8');
+        console.log('Resumen de sincronización guardado en zenon_report.md');
+      }
+
+      return;
+    } catch (err) {
+      console.error('❌ Error durante la sincronización documental:', err.message);
       process.exit(1);
     }
   }

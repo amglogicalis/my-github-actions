@@ -64,5 +64,5 @@ jobs:
           gh-models-token: ${{ secrets.GH_MODELS_TOKEN }}
           token-gh: ${{ secrets.TOKEN_GH }}
           mode: ${{ github.event.inputs.mode || 'assist' }}
-          objective-file: ${{ github.event.inputs.objective-file || 'zenon_objective.md' }}
+          objective-file: ${{ github.event.inputs['objective-file'] || 'zenon_objective.md' }}
           objective: ${{ github.event.inputs.objective || '' }}

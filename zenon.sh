@@ -13,6 +13,8 @@
 #   ./zenon.sh --mode analyzer           # show consumption stats and quotas
 #   ./zenon.sh --mode analyzer --reset-stats # reset consumption statistics
 #   ./zenon.sh --mode helper --topic "¿cómo funciona la autenticación?"
+#   ./zenon.sh --mode updater            # auto-update docs relative to code changes
+#   ./zenon.sh --mode updater --docs "README.md" # update specific documentation files
 # =============================================================================
 set -euo pipefail
 

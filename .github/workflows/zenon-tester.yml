@@ -1,0 +1,72 @@
+name: Zenon Tester
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+      - '.zenon_cache.json'
+      - '.gitignore'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      test-cmd:
+        description: 'Custom test command (optional, e.g. "npm test" or "pytest tests/billing_test.py"). Leave blank for auto-detection.'
+        required: false
+        default: ''
+      auto-fix:
+        description: 'Automatically fix failing tests and commit corrections'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+      topic:
+        description: 'Focus on a specific file, function or area (optional, e.g. "src/billing.js" or "función calcularIva")'
+        required: false
+        default: ''
+
+jobs:
+  test:
+    name: Run Zenon Tester
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || vars.ZENON_DISABLE_AUTO_TEST != 'true'
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Restore cache to get the general codebase context
+      - name: Restore Zenon Knowledge Cache
+        uses: actions/cache@v4
+        with:
+          path: .zenon_cache.json
+          key: zenon-knowledge-cache-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            zenon-knowledge-cache-${{ github.ref_name }}-
+            zenon-knowledge-cache-
+
+      - name: Run Zenon Tester Action
+        uses: ./.github/actions/tester
+        with:
+          test-cmd: ${{ github.event.inputs['test-cmd'] || '' }}
+          auto-fix: ${{ github.event.inputs['auto-fix'] || 'false' }}
+          topic: ${{ github.event.inputs['topic'] || '' }}
+          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          cohere-api-key: ${{ secrets.COHERE_API_KEY }}
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          samba-api-key: ${{ secrets.SAMBA_API_KEY }}
+          cerebras-api-key: ${{ secrets.CEREBRAS_API_KEY }}
+          gh-models-token: ${{ secrets.GH_MODELS_TOKEN }}
+          token-gh: ${{ secrets.TOKEN_GH }}

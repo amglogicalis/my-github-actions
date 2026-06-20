@@ -39,7 +39,7 @@ inputs:
     required: false
     default: ''
   mode:
-    description: 'Operating mode: "assist" (analyses code & suggests improvements), "correct" (directly modifies files & commits), "objective" (implements a goal described in a markdown file) or "trainer" (trains Zenon on a technology)'
+    description: 'Operating mode: "assist" (analyses code & suggests improvements), "correct" (directly modifies files & commits), "objective" (implements a goal described in a markdown file), "trainer" (trains Zenon on a technology), "updater" (synchronizes documentation) or "tester" (runs & diagnoses tests)'
     required: false
     default: 'assist'
   objective-file:
@@ -54,6 +54,14 @@ inputs:
     description: 'The topic, framework, or technology to research and learn in "trainer" mode'
     required: false
     default: ''
+  test-cmd:
+    description: 'Custom test command to run in "tester" mode (optional). If not set, Zenon auto-detects npm test / pytest / go test.'
+    required: false
+    default: ''
+  auto-fix:
+    description: 'If "true", Zenon will attempt to automatically fix failing tests in "tester" mode.'
+    required: false
+    default: 'false'
   github-token:
     description: 'GitHub Token for posting PR comments and pushing code changes'
     required: false
@@ -89,6 +97,9 @@ runs:
           fi
         elif [ "$INPUT_MODE" = "trainer" ]; then
           echo "Topic        : $INPUT_TOPIC"
+        elif [ "$INPUT_MODE" = "tester" ]; then
+          echo "Test Cmd     : ${{ inputs.test-cmd }}"
+          echo "Auto Fix     : ${{ inputs.auto-fix }}"
         fi
         echo "========================"
       env:
@@ -122,5 +133,7 @@ runs:
         INPUT_OBJECTIVE_FILE: ${{ inputs.objective-file }}
         INPUT_OBJECTIVE: ${{ inputs.objective }}
         INPUT_TOPIC: ${{ inputs.topic }}
+        INPUT_TEST_CMD: ${{ inputs.test-cmd }}
+        INPUT_AUTO_FIX: ${{ inputs.auto-fix }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
 

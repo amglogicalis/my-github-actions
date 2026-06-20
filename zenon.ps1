@@ -14,6 +14,10 @@
 #   .\zenon.ps1 --mode helper --topic "¿cómo funciona la autenticación?"
 #   .\zenon.ps1 --mode updater                       # auto-update docs relative to code changes
 #   .\zenon.ps1 --mode updater --docs "README.md"    # update specific documentation files
+#   .\zenon.ps1 --mode tester                        # detect tests, run and report errors
+#   .\zenon.ps1 --mode tester --auto-fix             # run tests and auto-fix/commit changes
+#   .\zenon.ps1 --mode tester --test-cmd "npm test"  # run tests with custom command
+#   .\zenon.ps1 --mode tester --topic "auth.test.js" # run tests focusing on auth.test.js
 # =============================================================================
 param(
     [Parameter(ValueFromRemainingArguments = $true)]

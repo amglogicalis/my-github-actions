@@ -15,6 +15,10 @@
 #   ./zenon.sh --mode helper --topic "¿cómo funciona la autenticación?"
 #   ./zenon.sh --mode updater            # auto-update docs relative to code changes
 #   ./zenon.sh --mode updater --docs "README.md" # update specific documentation files
+#   ./zenon.sh --mode tester             # detect tests, run and report errors
+#   ./zenon.sh --mode tester --auto-fix  # run tests and auto-fix/commit changes
+#   ./zenon.sh --mode tester --test-cmd "npm test" # run tests with custom command
+#   ./zenon.sh --mode tester --topic "auth.test.js" # run tests focusing on auth.test.js
 # =============================================================================
 set -euo pipefail
 

@@ -1,0 +1,80 @@
+name: 'Zenon Tester'
+description: 'AI-powered test runner that executes your test suite, diagnoses failures and optionally applies auto-fixes using Zenon AI.'
+author: 'amglogicalis'
+
+inputs:
+  test-cmd:
+    description: 'Custom test command to run (optional). If not set, Zenon auto-detects npm test / pytest / go test.'
+    required: false
+    default: ''
+  auto-fix:
+    description: 'If "true", Zenon will attempt to automatically fix failing tests and commit the corrections.'
+    required: false
+    default: 'false'
+  topic:
+    description: 'Optional focus target: a specific file, function, or area to concentrate testing on (e.g. "src/billing.js" or "función calcularIva").'
+    required: false
+    default: ''
+  zenon-api-key:
+    description: 'Gemini API Key (optional)'
+    required: false
+    default: ''
+  groq-api-key:
+    description: 'Groq API Key (optional)'
+    required: false
+    default: ''
+  cohere-api-key:
+    description: 'Cohere API Key (optional)'
+    required: false
+    default: ''
+  openrouter-api-key:
+    description: 'OpenRouter API Key (optional)'
+    required: false
+    default: ''
+  samba-api-key:
+    description: 'SambaNova API Key (optional)'
+    required: false
+    default: ''
+  cerebras-api-key:
+    description: 'Cerebras API Key (optional)'
+    required: false
+    default: ''
+  gh-models-token:
+    description: 'Token for GitHub Models API (GH_MODELS_TOKEN) (optional)'
+    required: false
+    default: ''
+  token-gh:
+    description: 'Alternative Token for GitHub Models API (TOKEN_GH) (optional)'
+    required: false
+    default: ''
+  exclude:
+    description: 'Comma-separated list of files or paths to exclude from codebase analysis'
+    required: false
+    default: ''
+  github-token:
+    description: 'GitHub Token for posting PR comments and committing auto-fixes'
+    required: false
+    default: '${{ github.token }}'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Zenon Tester
+      shell: bash
+      run: node "${{ github.action_path }}/../../../src/zenon.js"
+      env:
+        INPUT_ZENON_API_KEY: ${{ inputs.zenon-api-key }}
+        INPUT_GROQ_API_KEY: ${{ inputs.groq-api-key }}
+        INPUT_COHERE_API_KEY: ${{ inputs.cohere-api-key }}
+        INPUT_OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        INPUT_SAMBA_API_KEY: ${{ inputs.samba-api-key }}
+        INPUT_CEREBRAS_API_KEY: ${{ inputs.cerebras-api-key }}
+        INPUT_GH_MODELS_TOKEN: ${{ inputs.gh-models-token }}
+        INPUT_TOKEN_GH: ${{ inputs.token-gh }}
+        INPUT_MODE: 'tester'
+        INPUT_TEST_CMD: ${{ inputs.test-cmd }}
+        INPUT_AUTO_FIX: ${{ inputs.auto-fix }}
+        INPUT_TOPIC: ${{ inputs.topic }}
+        INPUT_EXCLUDE: ${{ inputs.exclude }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}

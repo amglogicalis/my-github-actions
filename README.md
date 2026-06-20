@@ -60,8 +60,8 @@ graph TD
             UP["📝 Updater\n--mode updater"]
             RE["🔍 Reviewer\n--mode reviewer"]
             TR["🎓 Trainer\n--mode trainer"]
-            CO["⚙️ DevOpser\n--mode correct"]
-            OB["🎯 Tester\n--mode objective"]
+            CO["⚙️ DevOpser\n--mode correct / --mode objective"]
+            TE["🧪 Tester\n--mode tester"]
         end
 
         ENTRY --> AGENTS
@@ -84,7 +84,7 @@ graph TD
     style RE fill:#dc2626,stroke:#b91c1c,stroke-width:1px,color:#fff
     style TR fill:#16a34a,stroke:#15803d,stroke-width:1px,color:#fff
     style CO fill:#9333ea,stroke:#7e22ce,stroke-width:1px,color:#fff
-    style OB fill:#db2777,stroke:#be185d,stroke-width:1px,color:#fff
+    style TE fill:#db2777,stroke:#be185d,stroke-width:1px,color:#fff
     style CLI fill:#374151,stroke:#6b7280,stroke-width:1px,color:#f9fafb
     style GHA fill:#374151,stroke:#6b7280,stroke-width:1px,color:#f9fafb
 ```
@@ -184,13 +184,27 @@ Los siguientes agentes y herramientas especializadas están implementados dentro
 * **Comando CLI**: `--mode trainer --topic "Nombre del framework o tecnología a aprender"`.
 * **Acción GHA**: [.github/actions/trainer/action.yml](./.github/actions/trainer/action.yml).
 
-#### ⚙️ DevOpser & Tester
-<p align="center">
-  <img src="assets/logos/logo_zenon_DevOpser.png" alt="DevOpser" width="70" />
-  <img src="assets/logos/logo_zenon_tester.png" alt="Tester" width="70" />
+#### ⚙️ Zenon DevOpser
+<p align="left">
+  <img src="assets/logos/logo_zenon_DevOpser.png" alt="Zenon DevOpser Logo" width="80" align="left" style="margin-right: 15px;" />
+  Es el agente de desarrollo encargado de realizar cambios directos en el código fuente de tu repositorio para resolver bugs complejos detectados de forma estática o para implementar metas de desarrollo concretas a partir de objetivos técnicos definidos por escrito en archivos Markdown.
 </p>
+<br />
 
-* **DevOpser/Tester** (`--mode correct` / `--mode objective`): Agentes encargados de modificar código físico en disco, autogenerar tests unitarios y hacer commits automáticos para cumplir con los objetivos técnicos especificados en Markdown.
+* **Comando CLI**: `--mode correct` (para corrección automática en caliente) o `--mode objective` (para implementar objetivos indicando `--objective ruta/fichero.md`).
+* **Acción GHA**: La acción raíz soporta ambos modos a través del input `mode`.
+
+#### 🧪 Zenon Tester
+<p align="left">
+  <img src="assets/logos/logo_zenon_tester.png" alt="Zenon Tester Logo" width="80" align="left" style="margin-right: 15px;" />
+  Es el módulo encargado de ejecutar la suite de pruebas del proyecto, diagnosticar de manera inteligente las causas del fallo si alguna prueba no supera las validaciones, y aplicar de forma totalmente automática correcciones de código asistidas por IA que devuelvan la suite de tests a un estado exitoso (en verde). Autodetecta Node.js/npm (jest, vitest, mocha), Python (pytest) y Go (go test), permitiendo también configurar un comando de ejecución personalizado.
+</p>
+<br />
+
+* **Modo Reporte**: Genera un análisis profundo de causas raíz, relacionándolo con el código exacto implicado en el fallo, y aporta recomendaciones de parches correctores.
+* **Modo Auto-Fix**: Corrige físicamente el código, re-ejecuta los tests para certificar que el bug se ha resuelto y, si todo pasa, realiza el commit y push automático en entornos de integración continua (CI).
+* **Comando CLI**: `--mode tester` (opcionalmente acepta `--test-cmd "comando"`, `--auto-fix` y `--topic "fichero_o_foco"`).
+* **Acción GHA**: [.github/actions/tester/action.yml](./.github/actions/tester/action.yml).
 
 ---
 
@@ -225,6 +239,15 @@ Utiliza los wrappers CLI [zenon.ps1](./zenon.ps1) (Windows PowerShell) o [zenon.
 # 8. Sincronizar automáticamente la documentación con el código (Modo Updater)
 .\zenon.ps1 --mode updater
 .\zenon.ps1 --mode updater --docs "README.md,docs/manual.md"
+
+# 9. Ejecutar tests, diagnosticar fallos y generar informe de errores (Modo Tester)
+.\zenon.ps1 --mode tester
+
+# 10. Ejecutar tests e intentar corregir automáticamente los fallos detectados
+.\zenon.ps1 --mode tester --auto-fix
+
+# 11. Ejecutar tests especificando un comando personalizado y focalizando el error
+.\zenon.ps1 --mode tester --test-cmd "npm run test:unit" --topic "src/auth.js"
 ```
 
 ### Uso en GitHub Actions (Flujos CI/CD)
@@ -345,6 +368,17 @@ Puedes usar directamente las sub-acciones específicas de Polis sin invocar la a
     github-token: ${{ secrets.GITHUB_TOKEN }} # Requerido para commits en CI
 ```
 
+#### Zenon Tester Action
+```yaml
+- name: Run Zenon Tester
+  uses: amglogicalis/Zenon/.github/actions/tester@main
+  with:
+    test-cmd: "npm test" # Opcional: Comando de pruebas a ejecutar
+    auto-fix: "true"      # Opcional: 'true' para corregir automáticamente los fallos
+    zenon-api-key: ${{ secrets.ZENON_API_KEY }}
+    github-token: ${{ secrets.GITHUB_TOKEN }} # Requerido para commits automáticos en auto-fix
+```
+
 ### C. Desactivar o Activar la Ejecución Automática (Push/PR)
 
 Si deseas desactivar la ejecución automática de los flujos de **Zenon Reviewer** y **Zenon Updater** en cada `push` o `pull_request` y que **solo se ejecuten de forma manual**, puedes configurar una **Variable de Repositorio** (Repository Variable) en los ajustes de tu repositorio **sin modificar ningún archivo YAML**.
@@ -362,12 +396,14 @@ Si deseas desactivar la ejecución automática de los flujos de **Zenon Reviewer
 | :--- | :--- | :---: |
 | `ZENON_DISABLE_AUTO_REVIEW` | `zenon-reviewer.yml` | `true` |
 | `ZENON_DISABLE_AUTO_UPDATE` | `zenon-updater.yml` | `true` |
+| `ZENON_DISABLE_AUTO_TEST` | `zenon-tester.yml` | `true` |
 
 Una vez creadas con valor `true`, los flujos se saltarán en pushes y PRs automáticos, pero **seguirás pudiendo ejecutarlos manualmente** desde la pestaña **Actions** → seleccionar el flujo → **Run workflow**.
 
 Al ejecutar los flujos manualmente desde la interfaz de GitHub:
 * **Zenon Reviewer**: Puedes escribir un rango de commits en `diff-range` (ej: `HEAD~1`). Si lo dejas vacío, revisará el último commit.
 * **Zenon Updater**: Puedes indicar qué archivos markdown auditar en `docs` (ej: `README.md`). Si lo dejas vacío, auditará todos los documentos del proyecto.
+* **Zenon Tester**: Permite configurar un comando personalizado en `test-cmd` y activar o desactivar el auto-fix con `auto-fix` ('true' o 'false').
 
 Para **reactivar** la auto-ejecución, cambia el valor a `false` o elimina la variable directamente.
 
@@ -421,11 +457,13 @@ TOKEN_GH=ghp_...
 | `cerebras-api-key`  | API Key para Cerebras (Opcional). | No | — |
 | `gh-models-token`   | Token personal para GitHub Models (GH_MODELS_TOKEN) (Opcional). | No | — |
 | `token-gh` | Token alternativo (secret: TOKEN_GH) para GitHub Models. | No | — |
-| `mode` | Modo de ejecución: `assist`, `correct`, `objective`, `trainer`, `reviewer`, `analyzer`, `helper` o `updater`. | No | `assist` |
+| `mode` | Modo de ejecución: `assist`, `correct`, `objective`, `trainer`, `reviewer`, `analyzer`, `helper`, `updater` o `tester`. | No | `assist` |
 | `objective-file` | Ruta al archivo Markdown que contiene las metas de `objective`. | No | `zenon_objective.md` |
 | `objective` | Texto directo con el objetivo (tiene precedencia sobre `objective-file`). | No | — |
 | `topic` | El tema, framework o tecnología a investigar en modo `trainer` o la consulta del asistente en modo `helper`. | No | — |
 | `docs` | Lista separada por comas de archivos de documentación a verificar y actualizar en modo `updater`. | No | README.md y todos los .md en raíz y carpeta docs/ |
+| `test-cmd` | Comando de test personalizado para ejecutar en modo `tester` (ej: `npm run test:unit`). | No | — |
+| `auto-fix` | Si se establece en `true`, Zenon intentará corregir automáticamente los fallos en modo `tester`. | No | `false` |
 | `exclude` | Rutas o archivos separados por comas que se deben excluir del análisis. | No | `""` |
 | `reset-stats` | Indica si se deben resetear las estadísticas a cero en modo `analyzer`. | No | `false` |
 

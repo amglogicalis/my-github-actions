@@ -353,6 +353,7 @@ async function selectModelsWithAI(keys, stackInfo, mode, totalSize, userQuery = 
                  : mode === 'trainer'   ? 'entrenamiento de conocimiento, requiere busqueda en Google (Google Search Grounding). Prioriza obligatoriamente modelos del proveedor "gemini" en los primeros lugares de la cadena para que puedan realizar busquedas en la web.'
                  : mode === 'helper'    ? 'asistencia interactiva sobre la base de codigo y resolucion de consultas'
                  : mode === 'updater'   ? 'sincronizacion de documentacion de texto con el codigo, salida JSON estructurada'
+                 : mode === 'tester'    ? 'analisis de tests, identificacion de fallos y generacion/correccion de pruebas unitarias. Si auto-fix, salida JSON estructurada con los archivos corregidos; si modo reporte, informe Markdown detallado con trazas y soluciones.'
                  : 'revision de codigo, produce informe Markdown';
 
   const selectorSystemInstruction =
@@ -558,6 +559,17 @@ function parseArgs() {
       args.docs = process.argv[++i];
     } else if (arg === '--reset-stats') {
       args.resetStats = true;
+    } else if (arg === '--test-cmd' && i + 1 < process.argv.length) {
+      args.testCmd = process.argv[++i];
+    } else if (arg === '--auto-fix') {
+      // Support both --auto-fix (flag alone) and --auto-fix true/false
+      const next = process.argv[i + 1];
+      if (next && next !== 'false' && !next.startsWith('--')) {
+        args.autoFix = next !== 'false';
+        i++;
+      } else {
+        args.autoFix = true;
+      }
     }
   }
   return args;
@@ -1381,6 +1393,10 @@ async function main() {
     console.log(`Topic        : "${topic || '(none)'}"`);
   } else if (mode === 'reviewer') {
     console.log(`Diff Range   : "${diffRange || '(auto)'}"`);
+  } else if (mode === 'tester') {
+    console.log(`Test Command : "${cliArgs.testCmd || process.env.INPUT_TEST_CMD || '(auto-detect)'}"`);
+    console.log(`Auto Fix     : ${cliArgs.autoFix || process.env.INPUT_AUTO_FIX === 'true' ? 'yes' : 'no'}`);
+    if (topic) console.log(`Focus Topic  : "${topic}"`);
   }
   console.log('=====================');
 
@@ -1393,8 +1409,8 @@ async function main() {
     process.exit(1);
   }
 
-  if (!['assist', 'correct', 'objective', 'trainer', 'reviewer', 'analyzer', 'helper', 'updater'].includes(mode)) {
-    console.error(`❌ Modo "${mode}" no reconocido. Modos disponibles: "assist", "correct", "objective", "trainer", "reviewer", "analyzer", "helper", "updater".`);
+  if (!['assist', 'correct', 'objective', 'trainer', 'reviewer', 'analyzer', 'helper', 'updater', 'tester'].includes(mode)) {
+    console.error(`❌ Modo "${mode}" no reconocido. Modos disponibles: "assist", "correct", "objective", "trainer", "reviewer", "analyzer", "helper", "updater", "tester".`);
     process.exit(1);
   }
 
@@ -1669,6 +1685,8 @@ async function main() {
     userQuery = 'Análisis de consumo de tokens y cuotas de uso';
   } else if (mode === 'updater') {
     userQuery = 'Sincronización automática de documentación con cambios de código';
+  } else if (mode === 'tester') {
+    userQuery = topic ? `Análisis y testing de: ${topic}` : 'Análisis de tests, diagnóstico de fallos y corrección de pruebas unitarias';
   }
 
   // Intentar la selección inteligente mediante IA primero
@@ -1983,6 +2001,242 @@ Please perform a deep technical code review of this diff.`;
       return;
     } catch (err) {
       console.error('❌ Error durante la revisión:', err.message);
+      process.exit(1);
+    }
+  }
+
+  // =============================================================================
+  // MODO TESTER — Ejecución de pruebas, análisis de fallos y corrección con IA
+  // =============================================================================
+  if (mode === 'tester') {
+    try {
+      const { execSync } = require('child_process');
+      const autoFix = cliArgs.autoFix || process.env.INPUT_AUTO_FIX === 'true';
+      const customTestCmd = cliArgs.testCmd || process.env.INPUT_TEST_CMD || '';
+
+      // --- 1. Auto-detect test runner ---
+      function detectTestRunner() {
+        // JavaScript / TypeScript: npm test or npx runner
+        if (fs.existsSync(path.join(process.cwd(), 'package.json'))) {
+          try {
+            const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+            if (pkg.scripts && pkg.scripts.test && pkg.scripts.test.trim() !== 'echo "Error: no test specified" && exit 1') {
+              return { cmd: 'npm test', runtime: 'node', label: 'npm test (from package.json)' };
+            }
+            // Check devDependencies / dependencies for known runners
+            const deps = Object.keys({ ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) });
+            if (deps.includes('jest'))   return { cmd: 'npx jest --no-coverage', runtime: 'node', label: 'Jest (npx)' };
+            if (deps.includes('vitest')) return { cmd: 'npx vitest run',          runtime: 'node', label: 'Vitest (npx)' };
+            if (deps.includes('mocha'))  return { cmd: 'npx mocha',               runtime: 'node', label: 'Mocha (npx)' };
+          } catch (e) {}
+          return { cmd: 'npm test', runtime: 'node', label: 'npm test (fallback)' };
+        }
+        // Python: pytest or unittest
+        const hasPy = files.some(f => f.endsWith('.py'));
+        if (hasPy || fs.existsSync(path.join(process.cwd(), 'pyproject.toml')) || fs.existsSync(path.join(process.cwd(), 'requirements.txt'))) {
+          return { cmd: 'python -m pytest -v', runtime: 'python', label: 'pytest' };
+        }
+        // Go
+        if (fs.existsSync(path.join(process.cwd(), 'go.mod'))) {
+          return { cmd: 'go test ./...', runtime: 'go', label: 'go test' };
+        }
+        return null;
+      }
+
+      // --- 2. Run tests safely with timeout ---
+      function runTests(cmd) {
+        console.log(`🧪 Executing: ${cmd}`);
+        try {
+          const output = execSync(cmd, {
+            cwd: process.cwd(),
+            encoding: 'utf8',
+            timeout: 120000,   // 2 minutes hard timeout
+            stdio: ['pipe', 'pipe', 'pipe']
+          });
+          return { success: true, output: output, exitCode: 0 };
+        } catch (err) {
+          const output = (err.stdout || '') + '\n' + (err.stderr || '');
+          return { success: false, output: output.trim(), exitCode: err.status || 1 };
+        }
+      }
+
+      // --- 3. Determine which test command to use ---
+      let testRunner = null;
+      if (customTestCmd) {
+        testRunner = { cmd: customTestCmd, runtime: 'custom', label: `Custom: ${customTestCmd}` };
+      } else {
+        testRunner = detectTestRunner();
+      }
+
+      if (!testRunner) {
+        console.error('❌ Zenon Tester could not detect a test runner for this project.');
+        console.error('   Hint: Use --test-cmd "your test command" to specify one manually.');
+        console.error('   Supported auto-detections: npm test / jest / vitest / mocha / pytest / go test');
+        process.exit(1);
+      }
+
+      console.log(`\n🧪 Zenon Tester detected runner: ${testRunner.label}`);
+      if (topic) {
+        console.log(`🎯 Focus: ${topic}`);
+      }
+
+      // --- 4. Run initial tests ---
+      const initialRun = runTests(testRunner.cmd);
+
+      // --- 5. Handle results ---
+      if (initialRun.success) {
+        // All tests pass
+        console.log('\n✅ All tests passed!');
+        const passReport = `### ✅ Zenon Tester — All Tests Passed\n\n` +
+          `**Command:** \`${testRunner.cmd}\`\n\n` +
+          `**Output:**\n\`\`\`\n${initialRun.output.slice(0, 3000)}\n\`\`\`\n`;
+
+        if (isCI && process.env.GITHUB_STEP_SUMMARY) {
+          let summaryContent = `### <img src="${LOGO_BASE_URL}/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Tester\n\n`;
+          summaryContent += `#### <img src="${LOGO_BASE_URL}/logo_zenon_tester.png" height="20" align="absmiddle" /> Informe de Pruebas\n\n`;
+          summaryContent += passReport;
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent);
+        } else {
+          let localReport = `# <img src="assets/logos/logo_polis_zenon.png" height="32" /> Zenon Polis — Tester Report\n\n`;
+          localReport += `## <img src="assets/logos/logo_zenon_tester.png" height="26" /> Pruebas Completadas\n\n`;
+          localReport += passReport;
+          fs.writeFileSync('zenon_report.md', localReport, 'utf8');
+          console.log('✅ Test report written to zenon_report.md');
+        }
+        return;
+      }
+
+      // Tests failed — invoke AI
+      console.log(`\n❌ Tests failed (exit code: ${initialRun.exitCode}). Invoking AI for diagnosis...`);
+      console.log('--- Test Output ---');
+      console.log(initialRun.output.slice(0, 2000));
+      console.log('-------------------');
+
+      const testerSystemInstruction = `You are "Zenon", a principal QA engineer and senior software developer with deep expertise in testing frameworks and debugging.
+Your task is to analyze a failing test suite output alongside the repository source code and provide an expert diagnosis.
+
+CRITICAL RULES:
+- Be precise: always reference the exact file path, function name, and line number involved in the failure.
+- Do NOT hallucinate fixes. Only correct demonstrable, real failures visible in the test output.
+- Do NOT modify unrelated code or tests that are not involved in the failures.
+- Preserve all existing code style, naming conventions, and framework patterns exactly.
+${autoFix
+  ? '- Return ONLY raw JSON (no markdown, no explanation). The JSON schema must be:\n{\n  "files": [\n    { "path": "relative/path/to/file", "content": "<complete corrected file content>", "reason": "<one-line explanation>" }\n  ]\n}'
+  : '- Return a structured Markdown report. Do NOT introduce yourself or write any preamble. Start directly with the first section heading.'}
+${cachedKnowledge ? `\n=== REPOSITORY CONTEXT (CACHED KNOWLEDGE) ===\n${cachedKnowledge}\n==============================================` : ''}`;
+
+      const focusSection = topic ? `\n=== FOCUS TARGET ===\n${topic}\n====================\n` : '';
+      const testerUserPrompt = `=== CODEBASE ===
+${codebasePayload.slice(0, chain[0].maxInputChars - 8000)}
+
+=== FAILING TEST OUTPUT ===
+${initialRun.output.slice(0, 6000)}
+${focusSection}
+${
+  autoFix
+    ? 'Fix all test failures shown above. Return ONLY the raw JSON with corrected files. Do not include files that do not need changes.'
+    : 'Analyze the failing tests above and provide a detailed technical report including:\n\n## 🧪 Test Failures\n| File | Test Name | Error | Root Cause |\n|------|-----------|-------|------------|\n\n## 🔍 Root Cause Analysis\nFor each failure: explain why the test is failing with reference to the actual code.\n\n## 🛠️ Recommended Fixes\nFor each failure: provide the corrected code snippet in a fenced block.\n\n## 📊 Summary\n| Total Failed | Root Cause Categories |\n|---|---|'
+}`;
+
+      console.log('🤖 Zenon Tester AI is analyzing the failures...');
+      const testerResult = await callWithFallback(chain, autoFix ? 'correct' : 'assist', testerSystemInstruction, testerUserPrompt);
+      const aiResponse = testerResult.text;
+      console.log(`\n✅ AI analysis complete using [${testerResult.provider.toUpperCase()}] ${testerResult.model}`);
+
+      if (autoFix) {
+        // --- Auto-fix mode: parse JSON and apply corrections ---
+        let result = extractJSON(aiResponse);
+        if (!result) {
+          console.warn(`  ⚠️  Model did not return valid JSON. Retrying with the remaining chain...`);
+          const usedIndex = chain.findIndex(e => e.provider === testerResult.provider && e.model === testerResult.model);
+          const remainingChain = usedIndex >= 0 ? chain.slice(usedIndex + 1) : [];
+          if (remainingChain.length > 0) {
+            const retryResult = await callWithFallback(remainingChain, 'correct', testerSystemInstruction, testerUserPrompt);
+            result = extractJSON(retryResult.text);
+          }
+          if (!result) {
+            console.error('❌ Could not obtain valid JSON from any model. Run without --auto-fix to get a text report.');
+            process.exit(1);
+          }
+        }
+
+        if (!result.files || !Array.isArray(result.files) || result.files.length === 0) {
+          console.log('ℹ️  AI found no files to correct. The issue may require manual inspection.');
+          return;
+        }
+
+        // Apply fixes
+        const modifiedFiles = [];
+        for (const file of result.files) {
+          const dir = path.dirname(file.path);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(file.path, file.content, 'utf8');
+          modifiedFiles.push(file.path);
+          console.log(`  ✅ Fixed: ${file.path} — ${file.reason || 'correction applied'}`);
+        }
+
+        // Re-run tests to verify fixes
+        console.log('\n🔄 Re-running tests to verify fixes...');
+        const verificationRun = runTests(testRunner.cmd);
+
+        if (verificationRun.success) {
+          console.log('\n✅ All tests now pass after auto-fix!');
+          if (isCI) {
+            let summaryContent = `### <img src="${LOGO_BASE_URL}/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Tester\n\n`;
+            summaryContent += `#### <img src="${LOGO_BASE_URL}/logo_zenon_tester.png" height="20" align="absmiddle" /> Auto-Fix Applied — Tests Now Pass ✅\n\n`;
+            summaryContent += `The following files were corrected:\n\n`;
+            for (const file of result.files) {
+              summaryContent += `- **${file.path}**: ${file.reason || 'correction applied'}\n`;
+            }
+            if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent);
+            commitAndPushChanges(modifiedFiles);
+          } else {
+            let localReport = `# <img src="assets/logos/logo_polis_zenon.png" height="32" /> Zenon Polis — Tester Report\n\n`;
+            localReport += `## <img src="assets/logos/logo_zenon_tester.png" height="26" /> Auto-Fix Aplicado — Tests en Verde ✅\n\n`;
+            for (const file of result.files) {
+              localReport += `- **${file.path}**: ${file.reason || 'correction applied'}\n`;
+            }
+            fs.writeFileSync('zenon_report.md', localReport, 'utf8');
+            console.log('Details written to zenon_report.md');
+          }
+        } else {
+          // Fixes did not resolve all failures
+          console.log('⚠️  Tests still failing after auto-fix. Manual review is required.');
+          const failReport = `### ⚠️ Zenon Tester — Auto-Fix Applied, Tests Still Failing\n\nFixes were applied to:\n\n${
+            result.files.map(f => `- **${f.path}**: ${f.reason || ''}`).join('\n')
+          }\n\n**Remaining failures:**\n\`\`\`\n${verificationRun.output.slice(0, 3000)}\n\`\`\``;
+          if (isCI && process.env.GITHUB_STEP_SUMMARY) {
+            let s = `### <img src="${LOGO_BASE_URL}/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Tester\n\n`;
+            s += failReport;
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, s);
+          } else {
+            fs.writeFileSync('zenon_report.md', failReport, 'utf8');
+            console.log('Partial fix report written to zenon_report.md');
+          }
+        }
+
+      } else {
+        // --- Report mode: output AI analysis ---
+        if (isCI) {
+          let summaryContent = `### <img src="${LOGO_BASE_URL}/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Tester\n\n`;
+          summaryContent += `#### <img src="${LOGO_BASE_URL}/logo_zenon_tester.png" height="20" align="absmiddle" /> Informe de Fallos de Pruebas\n\n`;
+          summaryContent += `${aiResponse}\n`;
+          if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent);
+          const eventName = process.env.GITHUB_EVENT_NAME;
+          if (eventName === 'pull_request' || eventName === 'pull_request_target') {
+            await postPRComment(aiResponse, githubToken);
+          }
+        } else {
+          let localReport = `# <img src="assets/logos/logo_polis_zenon.png" height="32" /> Zenon Polis — Tester Report\n\n`;
+          localReport += `## <img src="assets/logos/logo_zenon_tester.png" height="26" /> Informe de Fallos\n\n`;
+          localReport += `${aiResponse}\n`;
+          fs.writeFileSync('zenon_report.md', localReport, 'utf8');
+          console.log('Test failure analysis written to zenon_report.md');
+        }
+      }
+      return;
+    } catch (err) {
+      console.error('❌ Error durante el modo tester:', err.message);
       process.exit(1);
     }
   }

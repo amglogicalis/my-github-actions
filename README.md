@@ -120,16 +120,34 @@ Los siguientes agentes y herramientas especializadas están implementados dentro
 * **Comando CLI**: `--mode updater` (Acepta el parámetro adicional `--docs "lista,archivos.md"` para especificar qué archivos auditar).
 * **Acción GHA**: [.github/actions/updater/action.yml](./.github/actions/updater/action.yml).
 
-#### 🔍 Reviewer, Trainer & DevOpsers
+#### 🔍 Zenon Reviewer
+<p align="left">
+  <img src="assets/logos/logo_zenon_reviewer.png" alt="Zenon Reviewer Logo" width="80" align="left" style="margin-right: 15px;" />
+  Es el módulo encargado de revisar automáticamente las diferencias del código (<code>git diff</code>) tras cada push o Pull Request. Analiza los cambios introducidos en busca de bugs lógicos, vulnerabilidades de seguridad, malas prácticas y cuellos de botella de rendimiento, y publica un informe técnico detallado directamente en los comentarios del Pull Request de GitHub.
+</p>
+<br />
+
+* **Auto-detección del Diff**: En CI detecta automáticamente el contexto (PR vs Push) y selecciona el rango de diferencias correcto. En local, analiza los cambios staged o el último commit.
+* **Comando CLI**: `--mode reviewer` (Acepta el parámetro adicional `--diff "HEAD~1"` para especificar un rango de commits concreto).
+* **Acción GHA**: [.github/actions/reviewer/action.yml](./.github/actions/reviewer/action.yml).
+
+#### 🎓 Zenon Trainer
+<p align="left">
+  <img src="assets/logos/logo_zenon_trainer.png" alt="Zenon Trainer Logo" width="80" align="left" style="margin-right: 15px;" />
+  Es el módulo encargado de entrenar y actualizar la base de conocimiento contextual de Zenon (<code>.zenon_cache.json</code>) con información fresca y actualizada sobre cualquier librería, framework o tecnología. Utiliza la capacidad de Google Search Grounding de Gemini para investigar en tiempo real la documentación más reciente y fusionarla de forma incremental en la caché.
+</p>
+<br />
+
+* **Incrementalidad Inteligente**: El conocimiento nuevo se añade bajo delimitadores de tema sin borrar el conocimiento previo, preservando el perfil acumulado del repositorio.
+* **Comando CLI**: `--mode trainer --topic "Nombre del framework o tecnología a aprender"`.
+* **Acción GHA**: [.github/actions/trainer/action.yml](./.github/actions/trainer/action.yml).
+
+#### ⚙️ DevOpser & Tester
 <p align="center">
-  <img src="assets/logos/logo_zenon_reviewer.png" alt="Reviewer" width="70" />
-  <img src="assets/logos/logo_zenon_trainer.png" alt="Trainer" width="70" />
   <img src="assets/logos/logo_zenon_DevOpser.png" alt="DevOpser" width="70" />
   <img src="assets/logos/logo_zenon_tester.png" alt="Tester" width="70" />
 </p>
 
-* **Reviewer** (`--mode reviewer`): Analiza las diferencias del código (`git diff`) y publica reportes técnicos con sugerencias y bugs detectados directamente en los Pull Requests de GitHub. Acción GHA: [.github/actions/reviewer/action.yml](./.github/actions/reviewer/action.yml).
-* **Trainer** (`--mode trainer --topic "..."`): Utiliza el grounding de búsqueda de Google Search para actualizar la base de conocimientos con especificaciones técnicas actuales y documentación fresca en la caché. Acción GHA: [.github/actions/trainer/action.yml](./.github/actions/trainer/action.yml).
 * **DevOpser/Tester** (`--mode correct` / `--mode objective`): Agentes encargados de modificar código físico en disco, autogenerar tests unitarios y hacer commits automáticos para cumplir con los objetivos técnicos especificados en Markdown.
 
 ---

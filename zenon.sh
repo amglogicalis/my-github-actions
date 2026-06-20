@@ -12,6 +12,7 @@
 #   ./zenon.sh --mode reviewer --diff "HEAD~1" # review last commit
 #   ./zenon.sh --mode analyzer           # show consumption stats and quotas
 #   ./zenon.sh --mode analyzer --reset-stats # reset consumption statistics
+#   ./zenon.sh --mode helper --topic "¿cómo funciona la autenticación?"
 # =============================================================================
 set -euo pipefail
 

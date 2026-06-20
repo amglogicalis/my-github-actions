@@ -1,0 +1,69 @@
+name: 'Zenon Helper'
+description: 'Ask questions and receive detailed explanations about the codebase from Zenon AI.'
+author: 'amglogicalis'
+
+inputs:
+  query:
+    description: 'Pregunta o duda sobre la base de código'
+    required: true
+  zenon-api-key:
+    description: 'Gemini API Key (optional)'
+    required: false
+    default: ''
+  groq-api-key:
+    description: 'Groq API Key (optional)'
+    required: false
+    default: ''
+  cohere-api-key:
+    description: 'Cohere API Key (optional)'
+    required: false
+    default: ''
+  openrouter-api-key:
+    description: 'OpenRouter API Key (optional)'
+    required: false
+    default: ''
+  samba-api-key:
+    description: 'SambaNova API Key (optional)'
+    required: false
+    default: ''
+  cerebras-api-key:
+    description: 'Cerebras API Key (optional)'
+    required: false
+    default: ''
+  gh-models-token:
+    description: 'Token for GitHub Models API (GH_MODELS_TOKEN) (optional)'
+    required: false
+    default: ''
+  token-gh:
+    description: 'Alternative Token for GitHub Models API (TOKEN_GH) (optional)'
+    required: false
+    default: ''
+  exclude:
+    description: 'Files to exclude from analysis if training is required'
+    required: false
+    default: ''
+  github-token:
+    description: 'GitHub Token for GHA operations'
+    required: false
+    default: '${{ github.token }}'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Zenon Helper
+      shell: bash
+      run: node "${{ github.action_path }}/../../../zenon.js"
+      env:
+        INPUT_ZENON_API_KEY: ${{ inputs.zenon-api-key }}
+        INPUT_GROQ_API_KEY: ${{ inputs.groq-api-key }}
+        INPUT_COHERE_API_KEY: ${{ inputs.cohere-api-key }}
+        INPUT_OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        INPUT_SAMBA_API_KEY: ${{ inputs.samba-api-key }}
+        INPUT_CEREBRAS_API_KEY: ${{ inputs.cerebras-api-key }}
+        INPUT_GH_MODELS_TOKEN: ${{ inputs.gh-models-token }}
+        INPUT_TOKEN_GH: ${{ inputs.token-gh }}
+        INPUT_MODE: 'helper'
+        INPUT_TOPIC: ${{ inputs.query }}
+        INPUT_EXCLUDE: ${{ inputs.exclude }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}

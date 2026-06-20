@@ -1,0 +1,46 @@
+name: Zenon Helper
+
+on:
+  workflow_dispatch:
+    inputs:
+      query:
+        description: 'Pregunta o duda sobre la base de código'
+        required: true
+        default: '¿Qué lenguajes y patrones arquitectónicos utiliza este repositorio?'
+
+jobs:
+  help:
+    name: Run Zenon Helper
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Restore cache to get the general codebase context
+      - name: Restore Zenon Knowledge Cache
+        uses: actions/cache@v4
+        with:
+          path: .zenon_cache.json
+          key: zenon-knowledge-cache-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            zenon-knowledge-cache-${{ github.ref_name }}-
+            zenon-knowledge-cache-
+
+      - name: Run Zenon Helper Action
+        uses: ./.github/actions/helper
+        with:
+          query: ${{ github.event.inputs.query }}
+          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          cohere-api-key: ${{ secrets.COHERE_API_KEY }}
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          samba-api-key: ${{ secrets.SAMBA_API_KEY }}
+          cerebras-api-key: ${{ secrets.CEREBRAS_API_KEY }}
+          gh-models-token: ${{ secrets.GH_MODELS_TOKEN }}
+          token-gh: ${{ secrets.TOKEN_GH }}

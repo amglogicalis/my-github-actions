@@ -56,6 +56,10 @@ Extrae el `git diff` de los cambios en local o de una Pull Request en CI y reali
 ### 6. Modo `analyzer` (Análisis de Consumo y Cuotas)
 Compila y visualiza estadísticas de consumo acumulado de tokens (Prompt, Completion, Total) y número de llamadas exitosas de todos los proveedores y modelos utilizados en la caché. Compara el uso con las estimaciones de cuota gratuita para controlar costes. Admite `--reset-stats` para poner los contadores a cero.
 
+### 7. Modo `helper` (Asistente de Repositorio)
+Responde preguntas en lenguaje natural sobre la estructura, funcionamiento, dependencias y arquitectura del código fuente del repositorio, basándose de manera eficiente en el perfil de conocimiento autoentrenado almacenado en la caché.
+
+
 > [!IMPORTANT]
 > **Recomendación para el Modo `objective`:**
 > Debido a los límites de tokens por petición y cuotas de los tiers gratuitos de las APIs, **se aconseja ser muy específico y acotado** con los objetivos que le encomiendes a Zenon. Es preferible definir tareas granulares y progresivas (por ejemplo: *"Añade validación de tipo string al parámetro email en la función X"*) en lugar de peticiones masivas y ambiguas (ej: *"Reescribe todo el backend"*).
@@ -240,7 +244,7 @@ Hemos creado dos scripts ligeros para automatizar la carga de variables del arch
 | `cerebras-api-key` | API Key para Cerebras. | No | — |
 | `gh-models-token` | Token personal para GitHub Models (no debe empezar por GITHUB_). | No | — |
 | `token-gh` | Token alternativo (secret: TOKEN_GH) para GitHub Models. | No | — |
-| `mode` | Modo de ejecución: `assist`, `correct`, `objective`, `trainer`, `reviewer` o `analyzer`. | No | `assist` |
+| `mode` | Modo de ejecución: `assist`, `correct`, `objective`, `trainer`, `reviewer`, `analyzer` o `helper`. | No | `assist` |
 | `objective-file` | Archivo/Ruta de directivas para el modo `objective` (si el archivo no existe, el valor se interpretará directamente como el texto del objetivo). | No | `zenon_objective.md` |
 | `objective` | Texto directo del objetivo a implementar en modo `objective` (tiene precedencia sobre `objective-file`). | No | — |
 | `exclude` | Archivos/rutas separados por comas que se deben ignorar. | No | `""` |

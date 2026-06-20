@@ -11,6 +11,7 @@
 #   .\zenon.ps1 --mode reviewer --diff "HEAD~1"       # review last commit
 #   .\zenon.ps1 --mode analyzer                      # show consumption stats and quotas
 #   .\zenon.ps1 --mode analyzer --reset-stats        # reset consumption statistics
+#   .\zenon.ps1 --mode helper --topic "¿cómo funciona la autenticación?"
 # =============================================================================
 param(
     [Parameter(ValueFromRemainingArguments = $true)]

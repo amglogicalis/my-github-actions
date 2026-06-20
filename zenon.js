@@ -1377,8 +1377,8 @@ async function main() {
     process.exit(1);
   }
 
-  if (!['assist', 'correct', 'objective', 'trainer', 'reviewer', 'analyzer'].includes(mode)) {
-    console.error(`❌ Modo "${mode}" no reconocido. Modos disponibles: "assist", "correct", "objective", "trainer", "reviewer", "analyzer".`);
+  if (!['assist', 'correct', 'objective', 'trainer', 'reviewer', 'analyzer', 'helper'].includes(mode)) {
+    console.error(`❌ Modo "${mode}" no reconocido. Modos disponibles: "assist", "correct", "objective", "trainer", "reviewer", "analyzer", "helper".`);
     process.exit(1);
   }
 
@@ -1527,6 +1527,35 @@ async function main() {
   }
 
   // =============================================================================
+  // PASO 11: Modo Helper — Leer la consulta / duda del usuario
+  // =============================================================================
+  let helperQuery = '';
+  if (mode === 'helper') {
+    if (topic && topic.trim()) {
+      helperQuery = topic.trim();
+    } else {
+      const directObjective = process.env.INPUT_OBJECTIVE || '';
+      if (directObjective.trim()) {
+        helperQuery = directObjective.trim();
+      } else if (objectiveFile) {
+        const objectivePath = path.resolve(process.cwd(), objectiveFile);
+        if (fs.existsSync(objectivePath)) {
+          helperQuery = fs.readFileSync(objectivePath, 'utf8').trim();
+        } else {
+          helperQuery = objectiveFile.trim();
+        }
+      }
+    }
+
+    if (!helperQuery || !helperQuery.trim()) {
+      console.error('❌ No se ha proporcionado una consulta o duda para el asistente.');
+      console.error('   Usa --topic "<tu duda>" o --objective "<tu duda>".');
+      process.exit(1);
+    }
+    console.log(`🎯 Consulta cargada para Zenon Helper: "${helperQuery.length > 60 ? helperQuery.substring(0, 60) + '...' : helperQuery}"`);
+  }
+
+  // =============================================================================
   // PASO 8: Modo Trainer — Leer el tema a aprender
   // =============================================================================
   let topicContent = '';
@@ -1670,7 +1699,7 @@ async function main() {
       if (cacheData.knowledge) {
         previousKnowledge = cacheData.knowledge;
       }
-      if (mode !== 'trainer' && (cacheData.fingerprint === fingerprint || mode === 'reviewer') && cacheData.knowledge) {
+      if (mode !== 'trainer' && (cacheData.fingerprint === fingerprint || mode === 'reviewer' || mode === 'helper') && cacheData.knowledge) {
         cachedKnowledge = cacheData.knowledge;
         cacheLoaded = true;
         console.log('ℹ️  Cargada base de conocimiento contextual desde la caché (.zenon_cache.json)');
@@ -1918,6 +1947,62 @@ Please perform a deep technical code review of this diff.`;
       return;
     } catch (err) {
       console.error('❌ Error durante la revisión:', err.message);
+      process.exit(1);
+    }
+  }
+
+  // =============================================================================
+  // PASO 11: Modo Helper — Ejecución del Asistente de Repositorio
+  // =============================================================================
+  if (mode === 'helper') {
+    try {
+      console.log('🤖 Zenon Helper is formulating your answer based on repository knowledge...');
+
+      let helperSystemInstruction = `You are "Zenon", a senior codebase architect and developer assistant.
+Your task is to answer the user's questions or doubts about the current codebase.
+You will be provided with the codebase knowledge profile (which summarizes the tech stack, languages, patterns, frameworks, and architecture of this repository).
+
+Use your knowledge of software engineering and the provided codebase profile to answer the user's query in a clear, precise, and structured Markdown format.
+Use headings, bullet points, tables, code blocks, or alerts (> [!NOTE] / > [!IMPORTANT]) where appropriate to make the answer easy to read and understand.
+Avoid introductory greetings, pleasantries, or concluding conversational filler. Go straight to the answer.`;
+
+      if (cachedKnowledge) {
+        helperSystemInstruction += `\n\n=== CONTEXTO DEL REPOSITORIO (CONOCIMIENTO CACHÉ) ===\n${cachedKnowledge}\n======================================================`;
+      }
+
+      const helperUserPrompt = `=== USER QUERY ===
+${helperQuery}
+
+Please answer the user query based on the codebase knowledge base provided.`;
+
+      console.log('🤖 Zenon is thinking...');
+      const helperResult = await callWithFallback(chain, 'assist', helperSystemInstruction, helperUserPrompt);
+      const answerText = helperResult.text;
+
+      console.log(`\n✅ Explanation generated successfully using [${helperResult.provider.toUpperCase()}] ${helperResult.model}`);
+
+      // Report
+      if (isCI) {
+        let summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Helper\n\n`;
+        summaryContent += `#### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_zenon_helper.png" height="20" align="absmiddle" /> Asistente de Repositorio\n\n`;
+        summaryContent += `**Consulta**: *${helperQuery}*\n\n`;
+        summaryContent += `${answerText}\n`;
+
+        if (process.env.GITHUB_STEP_SUMMARY) {
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryContent);
+        }
+      } else {
+        // Local mode report
+        let localReport = `# <img src="logo_polis_zenon.png" height="32" /> Zenon Polis — Helper Report\n\n`;
+        localReport += `## <img src="logo_zenon_helper.png" height="26" /> Asistente de Repositorio\n\n`;
+        localReport += `**Consulta**: *${helperQuery}*\n\n`;
+        localReport += `${answerText}\n`;
+        fs.writeFileSync('zenon_report.md', localReport, 'utf8');
+        console.log('Respuesta del asistente guardada en zenon_report.md');
+      }
+      return;
+    } catch (err) {
+      console.error('❌ Error durante la consulta del asistente:', err.message);
       process.exit(1);
     }
   }

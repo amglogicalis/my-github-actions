@@ -9,7 +9,7 @@
 ---
 
 ## Tarea: validate-syntax
-- **Instrucciones**: Valida la sintaxis de 'src/zenon.js' ejecutando un comando de sistema para hacer 'node --check src/zenon.js'. Imprime en consola el resultado. Si hay algún fallo de sintaxis, detén el pipeline.
+- **Instrucciones**: Valida la sintaxis del archivo 'src/zenon.js' (resuelve su ruta desde la raíz del proyecto usando 'process.cwd()' para evitar errores de carpetas secundarias) ejecutando un comando de sistema para hacer 'node --check [ruta_archivo]'. Imprime en consola el resultado. Si hay algún fallo de sintaxis, detén el pipeline.
 - **Ejecutar**: .zenon_devops/tasks/validate-syntax.js
 - **Continuar si falla**: false
 

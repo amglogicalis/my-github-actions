@@ -225,6 +225,35 @@ Los siguientes agentes y herramientas especializadas están implementados dentro
 
 ---
 
+## 💻 Cómo Exportar y Traer Zenon a otros PCs o Repositorios
+
+Puedes configurar todo el ecosistema de Zenon en cualquier repositorio o PC de forma automatizada mediante los scripts de configuración, o de forma manual siguiendo los pasos detallados a continuación.
+
+### ⚡ Importación y Configuración Automática (Recomendado)
+
+Disponemos de asistentes interactivos de configuración en PowerShell (`zenon_setup.ps1`) para Windows y en Bash (`zenon_setup.sh`) para Linux/macOS. Estos scripts te preguntarán qué módulos deseas importar, cuántos proveedores de IA configurar y crearán automáticamente todos los archivos de workflow en `.github/workflows/` junto con sus plantillas de configuración asociadas. Además, te ofrecerán la posibilidad de subir directamente los cambios a GitHub (commit & push automático) y configurar tus secretos de API (`ZENON_API_KEY`) y variables de control (`ZENON_DISABLE_AUTO_REVIEW`, `ZENON_DISABLE_AUTO_UPDATE`) de forma automática en tu repositorio usando la CLI de GitHub (`gh`).
+
+#### En Windows (PowerShell)
+Puedes descargar y ejecutar el script interactivamente en la raíz de tu repositorio objetivo con el siguiente comando en PowerShell:
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/amglogicalis/Zenon/main/zenon_setup.ps1" -OutFile "zenon_setup.ps1"
+.\zenon_setup.ps1
+# O ejecútalo con parámetros para una importación automática (ej. módulos 1, 2 y 7, y multiproveedor):
+# @("1,2,7", "2") | .\zenon_setup.ps1
+```
+
+#### En Linux / macOS / Git Bash (Bash)
+Puedes descargar y ejecutar el asistente de Bash en tu terminal:
+```bash
+curl -fsSL -o zenon_setup.sh https://raw.githubusercontent.com/amglogicalis/Zenon/main/zenon_setup.sh
+chmod +x zenon_setup.sh
+./zenon_setup.sh
+# O de forma desatendida/no interactiva:
+# printf "1,2,7\n2\n" | ./zenon_setup.sh
+```
+
+---
+
 ## 🚀 Guía de Uso de las Funciones
 
 ### Uso en Local (Terminal)
@@ -294,308 +323,7 @@ Puedes definir workflows independientes en tu carpeta `.github/workflows/` para 
 
 
 ---
-
-## 🔧 Configuración de los Módulos Polis en GitHub Actions
-
-### A. Ejecutar el Core Action de Zenon (Acción Principal)
-
-Crea un archivo `.github/workflows/zenon.yml` e invoca la acción principal apuntando al repositorio de origen:
-
-```yaml
-name: Zenon AI Assistant
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: 'Modo de ejecución'
-        required: false
-        default: 'assist'
-        type: choice
-        options:
-          - assist
-          - correct
-          - objective
-          - trainer
-          - reviewer
-          - analyzer
-          - helper
-
-jobs:
-  run-zenon:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # Recuperar la caché acumulada para optimizar costes de API y mantener estadísticas del Analyzer
-      - name: Restore Zenon Knowledge Cache
-        uses: actions/cache@v4
-        with:
-          path: .zenon_cache.json
-          key: zenon-knowledge-cache-${{ github.run_id }}
-          restore-keys: |
-            zenon-knowledge-cache-
-
-      # Ejecutar la Acción remota desde amglogicalis/Zenon
-      - name: Run Zenon Core Action
-        uses: amglogicalis/Zenon@main
-        with:
-          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
-          groq-api-key: ${{ secrets.GROQ_API_KEY }}
-          cohere-api-key: ${{ secrets.COHERE_API_KEY }}
-          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
-          samba-api-key: ${{ secrets.SAMBA_API_KEY }}
-          cerebras-api-key: ${{ secrets.CEREBRAS_API_KEY }}
-          gh-models-token: ${{ secrets.GH_MODELS_TOKEN }}
-          mode: ${{ github.event.inputs.mode || 'assist' }}
-```
-
-### B. Workflows Completos para otros Repositorios (Copiar y Pegar)
-
-Si deseas utilizar módulos específicos de Zenon en otros repositorios de GitHub, simplemente crea el archivo correspondiente en la carpeta `.github/workflows/` del nuevo repositorio utilizando una de las siguientes plantillas completas:
-
-#### 1. Auditoría Automática de Pull Requests (`.github/workflows/zenon-reviewer.yml`)
-Este flujo analiza el código de forma automática cada vez que se abre un Pull Request o se suben commits, publicando las conclusiones de bugs, optimizaciones y vulnerabilidades directamente como comentario en el PR.
-
-```yaml
-name: 🔍 Zenon Reviewer
-
-on:
-  pull_request:
-    branches: [ main ]
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
-  reviewer:
-    name: 🔍 Zenon Reviewer — PR Audit
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Run Zenon Reviewer
-        uses: amglogicalis/Zenon/.github/actions/reviewer@main
-        with:
-          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-#### 2. Operador DevOps Autónomo (`.github/workflows/zenon-devopser.yml`)
-Este flujo ejecuta tu pipeline de DevOpser (`zenon_devops.md`). Genera las tareas y scripts por IA con opción de auto-sanación y envía un correo HTML premium con los logs e informes al finalizar.
-
-```yaml
-name: ⚡ Zenon DevOpser
-
-on:
-  workflow_dispatch:
-    inputs:
-      devops-plan-file:
-        description: 'Plan file path (default: zenon_devops.md)'
-        required: false
-        default: 'zenon_devops.md'
-      self-heal:
-        description: 'Enable AI Self-Healing?'
-        required: false
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-      notify-email:
-        description: 'Email to send the execution report to'
-        required: false
-        default: 'tu-email@gmail.com'
-
-jobs:
-  devopser:
-    name: ⚡ Zenon DevOpser Pipeline
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Run Zenon DevOpser
-        uses: amglogicalis/Zenon/.github/actions/devopser@main
-        with:
-          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
-          devops-plan-file: ${{ inputs.devops-plan-file }}
-          self-heal: ${{ inputs.self-heal }}
-          notify-email: ${{ inputs.notify-email }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Send Email Report
-        if: always() && inputs['notify-email'] != ''
-        uses: dawidd6/action-send-mail@v4
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "⚡ Zenon DevOpser Report — ${{ github.repository }}"
-          to: ${{ inputs.notify-email }}
-          from: Zenon DevOpser
-          html_body: file://zenon_report.html
-```
-
-#### 3. Ejecución y Corrección de Tests (`.github/workflows/zenon-tester.yml`)
-Ejecuta la suite de pruebas del repositorio. Si alguna falla, la IA analiza el error y corrige automáticamente el archivo del código fuente afectado para pasarlos a verde.
-
-```yaml
-name: 🧪 Zenon Tester
-
-on:
-  workflow_dispatch:
-    inputs:
-      test-cmd:
-        description: 'Custom test command (leave empty for auto-detect)'
-        required: false
-        default: ''
-      auto-fix:
-        description: 'Enable auto-fix and commit corrections?'
-        required: false
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-
-jobs:
-  tester:
-    name: 🧪 Zenon Tester & Auto-Fix
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Run Zenon Tester
-        uses: amglogicalis/Zenon/.github/actions/tester@main
-        with:
-          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
-          test-cmd: ${{ inputs.test-cmd }}
-          auto-fix: ${{ inputs.auto-fix }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-#### 4. Sincronización de Documentación (`.github/workflows/zenon-updater.yml`)
-Compara los últimos commits con tus archivos markdown (`README.md` o manuales) y los actualiza de forma autónoma si el código ha cambiado, subiendo los cambios automáticamente.
-
-```yaml
-name: 📝 Zenon Updater
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
-  updater:
-    name: 📝 Zenon Updater — Sync Docs
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Run Zenon Updater
-        uses: amglogicalis/Zenon/.github/actions/updater@main
-        with:
-          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-#### 5. Asistente Interactivo de Código (`.github/workflows/zenon-helper.yml`)
-Permite hacer preguntas directamente al repositorio desde GitHub Actions e interactuar con la base de conocimiento de tu código.
-
-```yaml
-name: 🤖 Zenon Helper
-
-on:
-  workflow_dispatch:
-    inputs:
-      query:
-        description: 'Your question about the codebase'
-        required: true
-        default: 'Explain the general architecture of this repository.'
-
-jobs:
-  helper:
-    name: 🤖 Zenon Helper Query
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Run Zenon Helper
-        uses: amglogicalis/Zenon/.github/actions/helper@main
-        with:
-          zenon-api-key: ${{ secrets.ZENON_API_KEY }}
-          query: ${{ inputs.query }}
-```
-
-#### 6. Estadísticas de Consumo y Quotas (`.github/workflows/zenon-analyzer.yml`)
-Genera un resumen gráfico con el consumo de tokens y llamadas acumuladas en las ejecuciones de IA.
-
-```yaml
-name: 📊 Zenon Analyzer
-
-on:
-  workflow_dispatch:
-    inputs:
-      reset:
-        description: 'Reset quota statistics to zero?'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
-
-jobs:
-  analyzer:
-    name: 📊 Zenon Analyzer Stats
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Run Zenon Analyzer
-        uses: amglogicalis/Zenon/.github/actions/analyzer@main
-        with:
-          reset: ${{ inputs.reset }}
-```
-
-### C. Desactivar o Activar la Ejecución Automática (Push/PR)
+### Desactivar o Activar la Ejecución Automática (Push/PR)
 
 Si deseas desactivar la ejecución automática de los flujos de **Zenon Reviewer** y **Zenon Updater** en cada `push` o `pull_request` y que **solo se ejecuten de forma manual**, puedes configurar una **Variable de Repositorio** (Repository Variable) en los ajustes de tu repositorio **sin modificar ningún archivo YAML**.
 

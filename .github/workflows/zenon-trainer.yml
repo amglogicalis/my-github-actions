@@ -6,7 +6,7 @@ on:
       topic:
         description: 'The topic, framework, or technology to research and learn'
         required: true
-        default: 'Docker multi-stage builds and Node.js optimization'
+        default: ''
 
 jobs:
   train:

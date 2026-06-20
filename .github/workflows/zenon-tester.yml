@@ -1,16 +1,6 @@
 name: Zenon Tester
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - '**/*.md'
-      - '.zenon_cache.json'
-      - '.gitignore'
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       test-cmd:
@@ -34,7 +24,6 @@ jobs:
   test:
     name: Run Zenon Tester
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || vars.ZENON_DISABLE_AUTO_TEST != 'true'
 
     permissions:
       contents: write

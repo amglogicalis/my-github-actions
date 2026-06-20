@@ -396,16 +396,18 @@ Si deseas desactivar la ejecución automática de los flujos de **Zenon Reviewer
 | :--- | :--- | :---: |
 | `ZENON_DISABLE_AUTO_REVIEW` | `zenon-reviewer.yml` | `true` |
 | `ZENON_DISABLE_AUTO_UPDATE` | `zenon-updater.yml` | `true` |
-| `ZENON_DISABLE_AUTO_TEST` | `zenon-tester.yml` | `true` |
 
 Una vez creadas con valor `true`, los flujos se saltarán en pushes y PRs automáticos, pero **seguirás pudiendo ejecutarlos manualmente** desde la pestaña **Actions** → seleccionar el flujo → **Run workflow**.
+
+> [!NOTE]
+> **Zenon Tester** está diseñado exclusivamente para ejecutarse de forma manual e interactiva. Nunca se ejecuta automáticamente tras un push o commit, sirviendo como una herramienta bajo demanda para depurar y pasar pruebas cuando el desarrollador lo requiera.
 
 Al ejecutar los flujos manualmente desde la interfaz de GitHub:
 * **Zenon Reviewer**: Puedes escribir un rango de commits en `diff-range` (ej: `HEAD~1`). Si lo dejas vacío, revisará el último commit.
 * **Zenon Updater**: Puedes indicar qué archivos markdown auditar en `docs` (ej: `README.md`). Si lo dejas vacío, auditará todos los documentos del proyecto.
 * **Zenon Tester**: Permite configurar un comando personalizado en `test-cmd` y activar o desactivar el auto-fix con `auto-fix` ('true' o 'false').
 
-Para **reactivar** la auto-ejecución, cambia el valor a `false` o elimina la variable directamente.
+Para **reactivar** la auto-ejecución de los flujos automáticos, cambia el valor de su variable a `false` o elimínala directamente.
 
 ---
 

@@ -47,6 +47,10 @@ Identifica fallos evidentes de sintaxis, errores lógicos y problemas de segurid
 Lee un archivo markdown que describe un objetivo de desarrollo técnico específico (por defecto `zenon_objective.md`) y realiza todas las modificaciones necesarias en el código para cumplirlo.
 *   **En GitHub Actions:** Aplica las correcciones a los archivos, realiza commit/push y crea un resumen de cambios.
 
+> [!IMPORTANT]
+> **Recomendación para el Modo `objective`:**
+> Debido a los límites de tokens por petición y cuotas de los tiers gratuitos de las APIs, **se aconseja ser muy específico y acotado** con los objetivos que le encomiendes a Zenon. Es preferible definir tareas granulares y progresivas (por ejemplo: *"Añade validación de tipo string al parámetro email en la función X"*) en lugar de peticiones masivas y ambiguas (ej: *"Reescribe todo el backend"*).
+
 ### 4. Modo `trainer` (Entrenamiento de Conocimiento)
 Investiga sobre un tema o tecnología específica (pasada por consola o mediante un archivo `zenon_training.md`) utilizando **Google Search Grounding** para obtener la documentación y mejores prácticas actuales, guardándola de forma incremental en el perfil de conocimiento `.zenon_cache.json` del repositorio.
 
@@ -58,11 +62,6 @@ Compila y visualiza estadísticas de consumo acumulado de tokens (Prompt, Comple
 
 ### 7. Modo `helper` (Asistente de Repositorio)
 Responde preguntas en lenguaje natural sobre la estructura, funcionamiento, dependencias y arquitectura del código fuente del repositorio, basándose de manera eficiente en el perfil de conocimiento autoentrenado almacenado en la caché.
-
-
-> [!IMPORTANT]
-> **Recomendación para el Modo `objective`:**
-> Debido a los límites de tokens por petición y cuotas de los tiers gratuitos de las APIs, **se aconseja ser muy específico y acotado** con los objetivos que le encomiendes a Zenon. Es preferible definir tareas granulares y progresivas (por ejemplo: *"Añade validación de tipo string al parámetro email en la función X"*) en lugar de peticiones masivas y ambiguas (ej: *"Reescribe todo el backend"*).
 
 ---
 

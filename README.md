@@ -24,27 +24,69 @@ El proyecto está estructurado en dos grandes capas integradas pero conceptualme
 
 ```mermaid
 graph TD
-    subgraph "Zenon Principal (Motor Core)"
-        A[src/zenon.js] --> B[selectModelsWithAI]
-        A --> C[callWithFallback]
-        A --> D[.zenon_cache.json]
+    subgraph CORE ["🧠 Zenon Principal — Motor Core (src/zenon.js)"]
+        direction TB
+        SEL["🎯 selectModelsWithAI\nSelector Inteligente de Modelos"]
+        FALL["🔄 callWithFallback\nCascada Multi-Proveedor"]
+        CACHE[("💾 .zenon_cache.json\nConocimiento & Estadísticas")]
+
+        SEL --> FALL
+        FALL --> CACHE
     end
 
-    subgraph "Zenon Polis (Ecosistema)"
-        E[Workflows GHA] --> F[GitHub Actions Especializadas]
-        G[Wrappers CLI] --> H[Ejecución Local]
-        
-        F --> |Modo analyzer| I[Zenon Analyzer]
-        F --> |Modo helper| J[Zenon Helper]
-        F --> |Otros modos| K[Reviewer / Trainer / DevOpser]
-        
-        H --> A
-        F --> A
+    subgraph PROVIDERS ["⚡ Proveedores de IA"]
+        direction LR
+        P1["Gemini"]
+        P2["Groq"]
+        P3["Cohere"]
+        P4["SambaNova"]
+        P5["OpenRouter"]
+        P6["Cerebras"]
+        P7["GitHub Models"]
     end
-    
-    style A fill:#4F46E5,stroke:#312E81,stroke-width:2px,color:#fff
-    style I fill:#0D9488,stroke:#0F766E,stroke-width:1px,color:#fff
-    style J fill:#D97706,stroke:#B45309,stroke-width:1px,color:#fff
+
+    subgraph POLIS ["🏢 Zenon Polis — Ecosistema de Agentes"]
+        direction TB
+
+        subgraph ENTRY ["Puntos de Entrada"]
+            CLI["💻 CLI Wrappers\nzenon.ps1 / zenon.sh"]
+            GHA["⚙️ GitHub Actions\nWorkflows CI/CD"]
+        end
+
+        subgraph AGENTS ["Agentes Especializados"]
+            direction LR
+            AN["📊 Analyzer\n--mode analyzer"]
+            HE["🤖 Helper\n--mode helper"]
+            UP["📝 Updater\n--mode updater"]
+            RE["🔍 Reviewer\n--mode reviewer"]
+            TR["🎓 Trainer\n--mode trainer"]
+            CO["⚙️ DevOpser\n--mode correct"]
+            OB["🎯 Tester\n--mode objective"]
+        end
+
+        ENTRY --> AGENTS
+    end
+
+    POLIS --> CORE
+    FALL <--> PROVIDERS
+
+    style CORE fill:#1e1b4b,stroke:#4F46E5,stroke-width:2px,color:#c7d2fe
+    style POLIS fill:#1a1a2e,stroke:#7c3aed,stroke-width:2px,color:#e9d5ff
+    style PROVIDERS fill:#14231f,stroke:#059669,stroke-width:2px,color:#a7f3d0
+    style ENTRY fill:#1f2937,stroke:#6b7280,stroke-width:1px,color:#d1d5db
+    style AGENTS fill:#1f2937,stroke:#6b7280,stroke-width:1px,color:#d1d5db
+    style SEL fill:#4F46E5,stroke:#312E81,stroke-width:2px,color:#fff
+    style FALL fill:#7c3aed,stroke:#5b21b6,stroke-width:2px,color:#fff
+    style CACHE fill:#0369a1,stroke:#0c4a6e,stroke-width:2px,color:#fff
+    style AN fill:#0d9488,stroke:#0f766e,stroke-width:1px,color:#fff
+    style HE fill:#d97706,stroke:#b45309,stroke-width:1px,color:#fff
+    style UP fill:#2563eb,stroke:#1d4ed8,stroke-width:1px,color:#fff
+    style RE fill:#dc2626,stroke:#b91c1c,stroke-width:1px,color:#fff
+    style TR fill:#16a34a,stroke:#15803d,stroke-width:1px,color:#fff
+    style CO fill:#9333ea,stroke:#7e22ce,stroke-width:1px,color:#fff
+    style OB fill:#db2777,stroke:#be185d,stroke-width:1px,color:#fff
+    style CLI fill:#374151,stroke:#6b7280,stroke-width:1px,color:#f9fafb
+    style GHA fill:#374151,stroke:#6b7280,stroke-width:1px,color:#f9fafb
 ```
 
 ---

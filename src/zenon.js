@@ -1280,7 +1280,7 @@ async function postPRComment(report, token) {
     const apiUrl = process.env.GITHUB_API_URL || 'https://api.github.com';
     const url = `${apiUrl}/repos/${repo}/issues/${prNumber}/comments`;
 
-    const commentBody = `### <img src="https://raw.githubusercontent.com/amglogicalis/my-github-actions/main/logo.png" height="22" align="absmiddle" /> Zenon (AI Assistant) Code Review\n\n${report}`;
+    const commentBody = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo.png" height="22" align="absmiddle" /> Zenon (AI Assistant) Code Review\n\n${report}`;
 
     const response = await fetch(url, {
       method: 'POST',
@@ -1452,8 +1452,8 @@ async function main() {
     stats.providers = stats.providers || {};
     stats.modes = stats.modes || {};
 
-    let report = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Analyzer\n\n`;
-    report += `#### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_zenon_analyzer.png" height="20" align="absmiddle" /> Análisis de Consumo y Estadísticas\n\n`;
+    let report = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Analyzer\n\n`;
+    report += `#### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_zenon_analyzer.png" height="20" align="absmiddle" /> Análisis de Consumo y Estadísticas\n\n`;
     report += `* **Último reinicio**: ${stats.lastReset ? new Date(stats.lastReset).toLocaleString() : 'N/A'}\n`;
     report += `* **Total de llamadas exitosas**: ${stats.totalCalls}\n\n`;
 
@@ -1523,8 +1523,8 @@ async function main() {
     } else {
       let localReport = report
         .replace(/https:\/\/raw\.githubusercontent\.com\/amglogicalis\/Zenon\/main\//g, '')
-        .replace(/### <img src="logo_polis_zenon.png"[^>]*> /, '# ')
-        .replace(/#### <img src="logo_zenon_analyzer.png"[^>]*> /, '## ');
+        .replace(/### <img src="assets\/logos\/logo_polis_zenon.png"[^>]*> /, '# ')
+        .replace(/#### <img src="assets\/logos\/logo_zenon_analyzer.png"[^>]*> /, '## ');
 
       fs.writeFileSync('zenon_report.md', localReport, 'utf8');
       console.log(localReport);
@@ -1874,8 +1874,8 @@ Return the structured, professional technical profile now.`;
 
       // Report
       if (isCI) {
-        let summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Trainer\n\n`;
-        summaryContent += `#### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_zenon_trainer.png" height="20" align="absmiddle" /> Aprendizaje Completado\n\n`;
+        let summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Trainer\n\n`;
+        summaryContent += `#### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_zenon_trainer.png" height="20" align="absmiddle" /> Aprendizaje Completado\n\n`;
         summaryContent += `Zenon ha investigado e incorporado con éxito el siguiente tema a la base de conocimiento:\n\n`;
         summaryContent += `**Tema**: \`${topicContent}\`\n\n`;
         summaryContent += `#### Resumen Técnico Aprendido:\n${newKnowledge}\n`;
@@ -1884,8 +1884,8 @@ Return the structured, professional technical profile now.`;
         }
       } else {
         // Local mode report
-        let localReport = `# <img src="logo_polis_zenon.png" height="32" /> Zenon Polis — Trainer Report\n\n`;
-        localReport += `## <img src="logo_zenon_trainer.png" height="26" /> Aprendizaje Completado\n\n`;
+        let localReport = `# <img src="assets/logos/logo_polis_zenon.png" height="32" /> Zenon Polis — Trainer Report\n\n`;
+        localReport += `## <img src="assets/logos/logo_zenon_trainer.png" height="26" /> Aprendizaje Completado\n\n`;
         localReport += `**Tema**: \`${topicContent}\`\n\n`;
         localReport += `### Resumen Técnico Aprendido:\n\n${newKnowledge}\n`;
         fs.writeFileSync('zenon_report.md', localReport, 'utf8');
@@ -1909,7 +1909,7 @@ Return the structured, professional technical profile now.`;
       if (!diffContent || !diffContent.trim()) {
         console.log('✅ No changes found to review.');
         if (isCI && process.env.GITHUB_STEP_SUMMARY) {
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Reviewer\n\nNo changes were found in the current diff range.\n`);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Reviewer\n\nNo changes were found in the current diff range.\n`);
         }
         return;
       }
@@ -1946,8 +1946,8 @@ Please perform a deep technical code review of this diff.`;
 
       // Report
       if (isCI) {
-        let summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Reviewer\n\n`;
-        summaryContent += `#### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_zenon_reviewer.png" height="20" align="absmiddle" /> Informe de Revisión\n\n`;
+        let summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Reviewer\n\n`;
+        summaryContent += `#### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_zenon_reviewer.png" height="20" align="absmiddle" /> Informe de Revisión\n\n`;
         summaryContent += `${reportText}\n`;
 
         if (process.env.GITHUB_STEP_SUMMARY) {
@@ -1961,8 +1961,8 @@ Please perform a deep technical code review of this diff.`;
         }
       } else {
         // Local mode report
-        let localReport = `# <img src="logo_polis_zenon.png" height="32" /> Zenon Polis — Reviewer Report\n\n`;
-        localReport += `## <img src="logo_zenon_reviewer.png" height="26" /> Informe de Revisión\n\n`;
+        let localReport = `# <img src="assets/logos/logo_polis_zenon.png" height="32" /> Zenon Polis — Reviewer Report\n\n`;
+        localReport += `## <img src="assets/logos/logo_zenon_reviewer.png" height="26" /> Informe de Revisión\n\n`;
         localReport += `${reportText}\n`;
         fs.writeFileSync('zenon_report.md', localReport, 'utf8');
         console.log('Detalles de la revisión guardados en zenon_report.md');
@@ -2077,8 +2077,8 @@ Please answer the user query based on the codebase knowledge base and the live c
 
       // Report
       if (isCI) {
-        let summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Helper\n\n`;
-        summaryContent += `#### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/logo_zenon_helper.png" height="20" align="absmiddle" /> Asistente de Repositorio\n\n`;
+        let summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_polis_zenon.png" height="24" align="absmiddle" /> Zenon Polis — Helper\n\n`;
+        summaryContent += `#### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_zenon_helper.png" height="20" align="absmiddle" /> Asistente de Repositorio\n\n`;
         summaryContent += `**Consulta**: *${helperQuery}*\n\n`;
         summaryContent += `${answerText}\n`;
 
@@ -2087,8 +2087,8 @@ Please answer the user query based on the codebase knowledge base and the live c
         }
       } else {
         // Local mode report
-        let localReport = `# <img src="logo_polis_zenon.png" height="32" /> Zenon Polis — Helper Report\n\n`;
-        localReport += `## <img src="logo_zenon_helper.png" height="26" /> Asistente de Repositorio\n\n`;
+        let localReport = `# <img src="assets/logos/logo_polis_zenon.png" height="32" /> Zenon Polis — Helper Report\n\n`;
+        localReport += `## <img src="assets/logos/logo_zenon_helper.png" height="26" /> Asistente de Repositorio\n\n`;
         localReport += `**Consulta**: *${helperQuery}*\n\n`;
         localReport += `${answerText}\n`;
         fs.writeFileSync('zenon_report.md', localReport, 'utf8');
@@ -2245,7 +2245,7 @@ Perform a deep technical review. Return ONLY the Markdown report — no preamble
         console.log('Zenon did not find any files that require changes.');
         if (isCI && process.env.GITHUB_STEP_SUMMARY) {
           const header = isObjectiveMode ? 'Zenon Objective Completion' : 'Zenon Auto-Correction';
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### <img src="https://raw.githubusercontent.com/amglogicalis/my-github-actions/main/logo.png" height="22" align="absmiddle" /> ${header}\n\nNo changes were found necessary for this codebase.\n`);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo.png" height="22" align="absmiddle" /> ${header}\n\nNo changes were found necessary for this codebase.\n`);
         }
         return;
       }
@@ -2278,11 +2278,11 @@ Perform a deep technical review. Return ONLY the Markdown report — no preamble
         // Write report to step summary
         let summaryContent = '';
         if (isObjectiveMode) {
-          summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/my-github-actions/main/logo.png" height="22" align="absmiddle" /> Zenon Objective Completed\n\n`;
+          summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo.png" height="22" align="absmiddle" /> Zenon Objective Completed\n\n`;
           summaryContent += `**Goal/Objective**:\n> ${objectiveContent.replace(/\n/g, '\n> ')}\n\n`;
           summaryContent += `Zenon has successfully implemented the objective by making changes to the following files:\n\n`;
         } else {
-          summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/my-github-actions/main/logo.png" height="22" align="absmiddle" /> Zenon Auto-Correction Applied\n\n`;
+          summaryContent = `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo.png" height="22" align="absmiddle" /> Zenon Auto-Correction Applied\n\n`;
           summaryContent += `Zenon has analyzed your code and applied corrections to the following files:\n\n`;
         }
         for (const file of result.files) {
@@ -2321,7 +2321,7 @@ Perform a deep technical review. Return ONLY the Markdown report — no preamble
       if (isCI) {
         // Write report to GHA Job Summary
         if (process.env.GITHUB_STEP_SUMMARY) {
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### <img src="https://raw.githubusercontent.com/amglogicalis/my-github-actions/main/logo.png" height="22" align="absmiddle" /> Zenon (AI Assistant) Code Review\n\n${rawResponse}`);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### <img src="https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo.png" height="22" align="absmiddle" /> Zenon (AI Assistant) Code Review\n\n${rawResponse}`);
         }
 
         // Post comment to PR if event is PR

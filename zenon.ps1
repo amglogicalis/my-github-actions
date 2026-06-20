@@ -22,7 +22,7 @@ $ErrorActionPreference = "Stop"
 
 # Resolve the directory where this script lives (the repo root)
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$ZenonJs   = Join-Path $ScriptDir "zenon.js"
+$ZenonJs   = Join-Path $ScriptDir "src\zenon.js"
 
 # Verify if zenon.js exists. If not, the wrapper was likely copied without zenon.js.
 if (-not (Test-Path $ZenonJs)) {

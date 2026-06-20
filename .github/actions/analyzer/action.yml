@@ -18,4 +18,4 @@ runs:
         if [ "${{ inputs.reset }}" = "true" ]; then
           ARGS+=("--reset-stats")
         fi
-        node "${{ github.action_path }}/../../../zenon.js" "${ARGS[@]}"
+        node "${{ github.action_path }}/../../../src/zenon.js" "${ARGS[@]}"

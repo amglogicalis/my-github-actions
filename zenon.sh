@@ -24,7 +24,7 @@ while [ -h "$SOURCE" ]; do
   [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
 done
 SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
-ZENON_JS="$SCRIPT_DIR/zenon.js"
+ZENON_JS="$SCRIPT_DIR/src/zenon.js"
 
 # Verify if zenon.js exists
 if [ ! -f "$ZENON_JS" ]; then

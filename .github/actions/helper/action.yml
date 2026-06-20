@@ -52,7 +52,7 @@ runs:
   steps:
     - name: Run Zenon Helper
       shell: bash
-      run: node "${{ github.action_path }}/../../../zenon.js"
+      run: node "${{ github.action_path }}/../../../src/zenon.js"
       env:
         INPUT_ZENON_API_KEY: ${{ inputs.zenon-api-key }}
         INPUT_GROQ_API_KEY: ${{ inputs.groq-api-key }}

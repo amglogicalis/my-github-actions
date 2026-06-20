@@ -2440,7 +2440,7 @@ ${cachedCtx ? `\n=== REPOSITORY CONTEXT ===\n${cachedCtx.slice(0, 2000)}\n======
 
         const scriptUserPrompt = `Write a Node.js script that does the following:\n\n${task.instructions}\n\nThe script will be saved as: ${task.scriptPath || `.zenon_devops/tasks/${task.id}.js`}\nOutput only the raw JavaScript code.`;
 
-        const result = await callWithFallback(aiChain, 'correct', scriptSystemInstruction, scriptUserPrompt);
+        const result = await callWithFallback(aiChain, 'devops', scriptSystemInstruction, scriptUserPrompt);
         let code = result.text.trim();
         // Strip markdown code fences if the model accidentally included them
         code = code.replace(/^```(?:javascript|js|node)?\n?/i, '').replace(/\n?```\s*$/i, '').trim();
@@ -2484,7 +2484,7 @@ RULES:
 
         const healUserPrompt = `=== ORIGINAL TASK DESCRIPTION ===\n${task.instructions}\n\n=== FAILED SCRIPT CODE ===\n${scriptCode}\n\n=== ERROR OUTPUT ===\n${errorOutput.slice(0, 3000)}\n\nFix the script. Output only the corrected raw JavaScript code.`;
 
-        const result = await callWithFallback(aiChain, 'correct', healSystemInstruction, healUserPrompt);
+        const result = await callWithFallback(aiChain, 'devops', healSystemInstruction, healUserPrompt);
         let code = result.text.trim();
         code = code.replace(/^```(?:javascript|js|node)?\n?/i, '').replace(/\n?```\s*$/i, '').trim();
         return code;

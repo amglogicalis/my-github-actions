@@ -81,16 +81,16 @@ jobs:
 
       # Optional: Send email with report using dawidd6/action-send-mail
       # Uncomment and configure the following step if you want email notifications:
-      # - name: Send Email Report
-      #   if: always() && inputs.notify-email != ''
-      #   uses: dawidd6/action-send-mail@v4
-      #   with:
-      #     server_address: smtp.gmail.com
-      #     server_port: 587
-      #     username: ${{ secrets.MAIL_USERNAME }}
-      #     password: ${{ secrets.MAIL_PASSWORD }}
-      #     subject: "⚡ Zenon DevOpser Report — ${{ github.repository }}"
-      #     to: ${{ inputs.notify-email }}
-      #     from: Zenon DevOpser
-      #     body: file://zenon_report.md
-      #     content_type: text/markdown
+      - name: Send Email Report
+        if: always() && inputs.notify-email != ''
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "⚡ Zenon DevOpser Report — ${{ github.repository }}"
+          to: ${{ inputs.notify-email }}
+          from: Zenon DevOpser
+          body: file://zenon_report.md
+          content_type: text/markdown

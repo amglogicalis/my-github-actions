@@ -8,35 +8,28 @@
 
 ---
 
-## Tarea: check-environment
-- **Instrucciones**: Verifica el entorno de desarrollo: comprueba las versiones de Node.js (requiere >= 18), Git y npm disponibles en el sistema. Imprime un resumen con sus versiones y lanza un error si Node.js es menor de 18.
-- **Ejecutar**: .zenon_devops/tasks/check-environment.js  (AI lo creará si no existe)
+## Tarea: validate-syntax
+- **Instrucciones**: Valida la sintaxis de 'src/zenon.js' ejecutando un comando de sistema para hacer 'node --check src/zenon.js'. Imprime en consola el resultado. Si hay algún fallo de sintaxis, detén el pipeline.
+- **Ejecutar**: .zenon_devops/tasks/validate-syntax.js
 - **Continuar si falla**: false
 
-## Tarea: check-repo-health
-- **Instrucciones**: Analiza la salud del repositorio Git actual. Comprueba si existen cambios sin commitear, si el número de archivos tracked supera 500 (lo que podría indicar que falta un .gitignore), y si el archivo .gitignore existe y tiene al menos 5 entradas. Imprime un resumen de la salud del repositorio.
-- **Depende de**: check-environment
-- **Timeout**: 300  (300 segundos)
-- **Continuar si falla**: true
-
-## Tarea: list-large-files
-- **Instrucciones**: Busca en el directorio actual (de forma recursiva, excluyendo node_modules y .git) archivos que superen 500KB. Muestra una lista de los archivos encontrados con su tamaño en KB ordenados de mayor a menor. Si no hay ninguno, indica que el repositorio está limpio de archivos grandes.
-- **Depende de**: check-environment
-- **Env**: THRESHOLD_KB=500, MAX_FILES_DISPLAY=10
-- **Continuar si falla**: true
-
-## Tarea: generate-summary-report
-- **Instrucciones**: Crea un archivo llamado "devops_summary.txt" en la raíz del proyecto con la fecha y hora actual, el nombre del usuario del sistema operativo (process.env.USERNAME o process.env.USER), y un mensaje de "Pipeline completado exitosamente por Zenon DevOpser". Luego lee el archivo y confirma su creación mostrando su contenido.
-- **Depende de**: check-repo-health, list-large-files
+## Tarea: check-project-files
+- **Instrucciones**: Comprueba que los archivos clave del repositorio ('README.md', 'action.yml', 'zenon.ps1') existen. Lanza un error si falta alguno de ellos.
+- **Depende de**: validate-syntax
 - **Continuar si falla**: false
+
+## Tarea: generate-build-info
+- **Instrucciones**: Crea un archivo 'build_info.json' en la raíz con la fecha y hora de esta ejecución, el número total de archivos '.js' en la carpeta 'src/' y un mensaje indicando que el pipeline se completó correctamente.
+- **Depende de**: check-project-files
+- **Continuar si falla**: true
 
 ---
 
 <!-- CONFIGURACIÓN GLOBAL OPCIONAL -->
 <!-- Descomenta las siguientes líneas para activar notificaciones -->
 
-<!-- ## Destinatario -->
-<!-- tu-email@example.com -->
+## Destinatario
+amg.klon.github@gmail.com
 
 <!-- ## Webhook -->
-<!-- https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN -->
+https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN

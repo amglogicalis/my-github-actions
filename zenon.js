@@ -1513,6 +1513,8 @@ async function main() {
       if (process.env.GITHUB_STEP_SUMMARY) {
         fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, report);
       }
+      console.log(report);
+      console.log('\n✅ Reporte de análisis publicado en el summary del job.');
     } else {
       let localReport = report
         .replace(/https:\/\/raw\.githubusercontent\.com\/amglogicalis\/Zenon\/main\//g, '')

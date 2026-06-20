@@ -3603,22 +3603,22 @@ process.on('uncaughtException', (err) => {
       
     if (l.startsWith('### ')) {
       if (inList) { html += '</ul>'; inList = false; }
-      html += `<h3 style="color:#1e293b; font-size:17px; font-weight:600; margin-top:20px; margin-bottom:10px;">\${l.substring(4)}</h3>`;
+      html += `<h3 style="color:#1e293b; font-size:17px; font-weight:600; margin-top:20px; margin-bottom:10px;">${l.substring(4)}</h3>`;
     } else if (l.startsWith('## ')) {
       if (inList) { html += '</ul>'; inList = false; }
-      html += `<h2 style="color:#0f172a; font-size:20px; font-weight:700; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-top:25px; margin-bottom:15px;">\${l.substring(3)}</h2>`;
+      html += `<h2 style="color:#0f172a; font-size:20px; font-weight:700; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-top:25px; margin-bottom:15px;">${l.substring(3)}</h2>`;
     } else if (l.startsWith('# ')) {
       if (inList) { html += '</ul>'; inList = false; }
-      html += `<h1 style="color:#0f172a; font-size:24px; font-weight:800; margin-top:30px; margin-bottom:20px;">\${l.substring(2)}</h1>`;
+      html += `<h1 style="color:#0f172a; font-size:24px; font-weight:800; margin-top:30px; margin-bottom:20px;">${l.substring(2)}</h1>`;
     } else if (l.startsWith('- ') || l.startsWith('* ')) {
       if (!inList) {
         html += '<ul style="padding-left:20px; margin-bottom:15px; margin-top:10px; list-style-type:disc;">';
         inList = true;
       }
-      html += `<li style="margin-bottom:8px; color:#475569; line-height:1.5; font-size:14px;">\${l.substring(2)}</li>`;
+      html += `<li style="margin-bottom:8px; color:#475569; line-height:1.5; font-size:14px;">${l.substring(2)}</li>`;
     } else {
       if (inList) { html += '</ul>'; inList = false; }
-      html += `<p style="margin-bottom:15px; color:#334155; line-height:1.6; font-size:14px;">\${l}</p>`;
+      html += `<p style="margin-bottom:15px; color:#334155; line-height:1.6; font-size:14px;">${l}</p>`;
     }
   }
   
@@ -3637,15 +3637,37 @@ function buildHtmlReport(taskResults, overallSuccess, statusLabel, totalDuration
   
   const logoDevopsUrl = 'https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_zenon_DevOpser.png';
 
+  // 1. Build Failures Summary box if any tasks failed
+  let failuresAlertHtml = '';
+  if (failureCount > 0) {
+    const failedTasks = taskResults.filter(r => r.status === 'failure');
+    let failuresList = '';
+    for (const f of failedTasks) {
+      failuresList += `<li style="margin-bottom: 5px;"><strong>${f.task.name}</strong> (\`${f.task.id}\`): ${f.output ? f.output.split('\n')[0].slice(0, 100) : 'Failed without output'}...</li>`;
+    }
+    failuresAlertHtml = `
+      <div style="background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; text-align: left;">
+        <span style="font-size: 15px; font-weight: 800; color: #991b1b; display: block; margin-bottom: 8px;">
+          ⚠️ Failed Tasks Summary
+        </span>
+        <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #7f1d1d; line-height: 1.5;">
+          ${failuresList}
+        </ul>
+      </div>
+    `;
+  }
+
+  // 2. Build task details
   let tasksHtml = '';
   for (const r of taskResults) {
     const taskEmoji = r.status === 'success' ? '✅' : r.status === 'failure' ? '❌' : r.status === 'warning' ? '⚠️' : '⏭️';
     const badgeColor = r.status === 'success' ? '#10b981' : r.status === 'failure' ? '#ef4444' : r.status === 'warning' ? '#f59e0b' : '#64748b';
     const badgeBg = r.status === 'success' ? '#dcfce7' : r.status === 'failure' ? '#fee2e2' : r.status === 'warning' ? '#fef3c7' : '#f1f5f9';
+    const cardBorder = r.status === 'success' ? '#e2e8f0' : r.status === 'failure' ? '#fecaca' : r.status === 'warning' ? '#fde68a' : '#e2e8f0';
+    const cardBg = r.status === 'success' ? '#ffffff' : r.status === 'failure' ? '#fff5f5' : r.status === 'warning' ? '#fffbeb' : '#ffffff';
     
     let outputLog = '';
     if (r.output && r.output.trim()) {
-      // Escape HTML entities to prevent rendering issues in email clients
       const escapedOutput = r.output.trim()
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -3654,37 +3676,37 @@ function buildHtmlReport(taskResults, overallSuccess, statusLabel, totalDuration
       outputLog = `
         <div style="margin-top: 15px;">
           <div style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 5px;">Output Log:</div>
-          <pre style="background-color: #0f172a; color: #f8fafc; padding: 15px; border-radius: 6px; font-family: Consolas, Monaco, monospace; font-size: 13px; line-height: 1.5; overflow-x: auto; margin: 0; white-space: pre-wrap; word-break: break-all;">\${escapedOutput}</pre>
+          <pre style="background-color: #0f172a; color: #f8fafc; padding: 15px; border-radius: 6px; font-family: Consolas, Monaco, monospace; font-size: 13px; line-height: 1.5; overflow-x: auto; margin: 0; white-space: pre-wrap; word-break: break-all;">${escapedOutput}</pre>
         </div>
       `;
     }
     
     tasksHtml += `
-      <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+      <div style="background-color: ${cardBg}; border: 1px solid ${cardBorder}; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: left;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
             <td valign="top">
-              <span style="font-size: 16px; font-weight: 700; color: #0f172a; margin-right: 8px;">\${taskEmoji} \${r.task.name}</span>
-              <code style="background-color: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px;">\${r.task.id}</code>
+              <span style="font-size: 16px; font-weight: 700; color: #0f172a; margin-right: 8px;">${taskEmoji} ${r.task.name}</span>
+              <code style="background-color: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px;">${r.task.id}</code>
             </td>
             <td align="right" valign="top" style="width: 100px;">
-              <span style="display: inline-block; background-color: \${badgeBg}; color: \${badgeColor}; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">
-                \${r.status}
+              <span style="display: inline-block; background-color: ${badgeBg}; color: ${badgeColor}; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">
+                ${r.status}
               </span>
             </td>
           </tr>
         </table>
         <div style="font-size: 13px; color: #64748b; margin-top: 8px;">
-          \${r.scriptPath ? \`<strong>Script:</strong> <code style="font-family: monospace; font-size: 12px; color: #0f172a;">\${r.scriptPath}</code> &nbsp;|&nbsp;\` : ''}
-          <strong>Duration:</strong> \${(r.duration/1000).toFixed(1)}s
+          ${r.scriptPath ? `<strong>Script:</strong> <code style="font-family: monospace; font-size: 12px; color: #0f172a;">${r.scriptPath}</code> &nbsp;|&nbsp;` : ''}
+          <strong>Duration:</strong> ${(r.duration/1000).toFixed(1)}s
         </div>
-        \${outputLog}
+        ${outputLog}
       </div>
     `;
   }
 
   const aiSummaryHtml = aiSummary ? `
-    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 30px; text-align: left;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 15px;">
         <tr>
           <td style="width: 40px; valign: middle;">
@@ -3696,7 +3718,7 @@ function buildHtmlReport(taskResults, overallSuccess, statusLabel, totalDuration
         </tr>
       </table>
       <div style="font-size: 14px; color: #1e3a1e;">
-        \${mdToHtml(aiSummary)}
+        ${mdToHtml(aiSummary)}
       </div>
     </div>
   ` : '';
@@ -3744,14 +3766,17 @@ function buildHtmlReport(taskResults, overallSuccess, statusLabel, totalDuration
                 <td style="padding: 30px;">
                   
                   <!-- STATUS BANNER -->
-                  <div style="background-color: \${statusBg}; border: 1px solid \${statusBorder}; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; text-align: left;">
+                  <div style="background-color: ${statusBg}; border: 1px solid ${statusBorder}; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; text-align: left;">
                     <span style="font-size: 18px; font-weight: 800; color: #0f172a; display: block; margin-bottom: 4px;">
-                      \${statusEmoji} \${statusLabel}
+                      ${statusEmoji} ${statusLabel}
                     </span>
                     <span style="font-size: 13px; color: #475569;">
-                      Executed <strong>\${taskResults.length}</strong> task(s) in <strong>\${(totalDuration/1000).toFixed(1)}s</strong>
+                      Executed <strong>${taskResults.length}</strong> task(s) in <strong>${(totalDuration/1000).toFixed(1)}s</strong>
                     </span>
                   </div>
+                  
+                  <!-- FAILURES ALERT BLOCK -->
+                  ${failuresAlertHtml}
                   
                   <!-- METRICS GRID -->
                   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 30px;">
@@ -3760,19 +3785,19 @@ function buildHtmlReport(taskResults, overallSuccess, statusLabel, totalDuration
                         <table width="100%" cellpadding="10" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
                           <tr>
                             <td>
-                              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Pipeline Run</div>
+                              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; text-align: left;">Pipeline Run</div>
                               <table width="100%" cellpadding="0" cellspacing="2" border="0" style="margin-top: 8px; font-size: 13px;">
                                 <tr>
-                                  <td style="color: #64748b;">✅ Succeeded:</td>
-                                  <td align="right" style="font-weight: 700; color: #166534;">\${successCount}</td>
+                                  <td style="color: #64748b; text-align: left;">✅ Succeeded:</td>
+                                  <td align="right" style="font-weight: 700; color: #166534;">${successCount}</td>
                                 </tr>
                                 <tr>
-                                  <td style="color: #64748b;">❌ Failed:</td>
-                                  <td align="right" style="font-weight: 700; color: #991b1b;">\${failureCount}</td>
+                                  <td style="color: #64748b; text-align: left;">❌ Failed:</td>
+                                  <td align="right" style="font-weight: 700; color: #991b1b;">${failureCount}</td>
                                 </tr>
                                 <tr>
-                                  <td style="color: #64748b;">⚠️ Warnings:</td>
-                                  <td align="right" style="font-weight: 700; color: #854d0e;">\${warningCount}</td>
+                                  <td style="color: #64748b; text-align: left;">⚠️ Warnings:</td>
+                                  <td align="right" style="font-weight: 700; color: #854d0e;">${warningCount}</td>
                                 </tr>
                               </table>
                             </td>
@@ -3784,19 +3809,19 @@ function buildHtmlReport(taskResults, overallSuccess, statusLabel, totalDuration
                         <table width="100%" cellpadding="10" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
                           <tr>
                             <td>
-                              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">System Details</div>
+                              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; text-align: left;">System Details</div>
                               <table width="100%" cellpadding="0" cellspacing="2" border="0" style="margin-top: 8px; font-size: 13px;">
                                 <tr>
-                                  <td style="color: #64748b;">Self-Heal:</td>
-                                  <td align="right" style="font-weight: 700; color: #0f172a;">\${selfHeal ? 'Enabled' : 'Disabled'}</td>
+                                  <td style="color: #64748b; text-align: left;">Self-Heal:</td>
+                                  <td align="right" style="font-weight: 700; color: #0f172a;">${selfHeal ? 'Enabled' : 'Disabled'}</td>
                                 </tr>
                                 <tr>
-                                  <td style="color: #64748b;">Duration:</td>
-                                  <td align="right" style="font-weight: 700; color: #0f172a;">\${(totalDuration/1000).toFixed(1)}s</td>
+                                  <td style="color: #64748b; text-align: left;">Duration:</td>
+                                  <td align="right" style="font-weight: 700; color: #0f172a;">${(totalDuration/1000).toFixed(1)}s</td>
                                 </tr>
                                 <tr>
-                                  <td style="color: #64748b;">Skipped:</td>
-                                  <td align="right" style="font-weight: 700; color: #0f172a;">\${skippedCount}</td>
+                                  <td style="color: #64748b; text-align: left;">Skipped:</td>
+                                  <td align="right" style="font-weight: 700; color: #0f172a;">${skippedCount}</td>
                                 </tr>
                               </table>
                             </td>
@@ -3807,15 +3832,15 @@ function buildHtmlReport(taskResults, overallSuccess, statusLabel, totalDuration
                   </table>
                   
                   <!-- AI EXECUTIVE SUMMARY -->
-                  \${aiSummaryHtml}
+                  ${aiSummaryHtml}
                   
                   <!-- TASK RESULTS HEADER -->
-                  <h2 style="color: #0f172a; font-size: 18px; font-weight: 800; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 0; margin-bottom: 20px;">
+                  <h2 style="color: #0f172a; font-size: 18px; font-weight: 800; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 0; margin-bottom: 20px; text-align: left;">
                     Task Results Details
                   </h2>
                   
                   <!-- LIST OF TASKS -->
-                  \${tasksHtml}
+                  ${tasksHtml}
                   
                 </td>
               </tr>
@@ -3823,7 +3848,7 @@ function buildHtmlReport(taskResults, overallSuccess, statusLabel, totalDuration
               <!-- FOOTER -->
               <tr>
                 <td style="background-color: #f1f5f9; padding: 20px 30px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
-                  Sent autonomously by <strong>Zenon DevOpser</strong> • \${new Date().toUTCString()}
+                  Sent autonomously by <strong>Zenon DevOpser</strong> • ${new Date().toUTCString()}
                 </td>
               </tr>
               

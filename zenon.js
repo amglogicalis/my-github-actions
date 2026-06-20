@@ -51,38 +51,38 @@ const PROVIDERS = {
     keyName: 'ZENON_API_KEY',
     alternateKeyName: 'GEMINI_API_KEY',
     models: [
-      { id: 'gemini-2.5-flash',        maxInputChars: 3000000 }, // 1M tokens
-      { id: 'gemini-flash-lite-latest', maxInputChars: 1000000 }, // 256K tokens
-      { id: 'gemini-3.1-flash-lite',   maxInputChars: 1000000 }, // 256K tokens
-      { id: 'gemma-4-31b-it',          maxInputChars:  400000 }  // 128K tokens
+      { id: 'gemini-2.5-flash',        maxInputChars: 4000000 }, // 1M tokens (4M chars)
+      { id: 'gemini-flash-lite-latest', maxInputChars: 4000000 }, // 1M tokens (4M chars)
+      { id: 'gemini-3.1-flash-lite',   maxInputChars: 4000000 }, // 1M tokens (4M chars)
+      { id: 'gemma-4-31b-it',          maxInputChars: 1000000 }  // 256K tokens (1M chars)
     ]
   },
   groq: {
     keyName: 'GROQ_API_KEY',
     models: [
-      { id: 'llama-3.3-70b-versatile',                   maxInputChars: 28000 }, // ~7K tokens (safe free tier)
-      { id: 'meta-llama/llama-4-scout-17b-16e-instruct', maxInputChars: 60000 }, // ~15K tokens
-      { id: 'qwen/qwen3.6-27b',                          maxInputChars: 60000 }, // ~15K tokens
-      { id: 'llama-3.1-8b-instant',                      maxInputChars: 24000 }  // ~6K tokens
+      { id: 'llama-3.3-70b-versatile',                   maxInputChars: 28000 }, // Groq RPM safety limit (~7K tokens)
+      { id: 'meta-llama/llama-4-scout-17b-16e-instruct', maxInputChars: 240000 }, // Groq limits to 60K tokens (240K chars)
+      { id: 'qwen/qwen3.6-27b',                          maxInputChars: 240000 }, // Groq limits to 60K tokens (240K chars)
+      { id: 'llama-3.1-8b-instant',                      maxInputChars: 24000 }  // Groq RPM safety limit (~6K tokens)
     ]
   },
   cohere: {
     keyName: 'COHERE_API_KEY',
     models: [
-      { id: 'command-a-plus-05-2026', maxInputChars: 200000 }, // ~50K tokens (conservador)
-      { id: 'command-r-plus-08-2024', maxInputChars: 500000 }, // ~128K tokens
-      { id: 'command-a-03-2025',      maxInputChars: 200000 }, // ~50K tokens
-      { id: 'command-r-08-2024',      maxInputChars: 500000 }  // ~128K tokens
+      { id: 'command-a-plus-05-2026', maxInputChars: 500000 }, // 128K tokens (500K chars)
+      { id: 'command-r-plus-08-2024', maxInputChars: 500000 }, // 128K tokens (500K chars)
+      { id: 'command-a-03-2025',      maxInputChars: 1000000 }, // 256K tokens (1M chars)
+      { id: 'command-r-08-2024',      maxInputChars: 500000 }  // 128K tokens (500K chars)
     ]
   },
   openrouter: {
     keyName: 'OPENROUTER_API_KEY',
     models: [
-      { id: 'cohere/north-mini-code:free',            maxInputChars: 200000 }, // código, gratuito
-      { id: 'qwen/qwen3-coder:free',                  maxInputChars: 300000 }, // Qwen Coder gratuito
-      { id: 'google/gemma-4-31b-it:free',             maxInputChars: 300000 }, // Gemma 4 gratuito
-      { id: 'meta-llama/llama-3.3-70b-instruct:free', maxInputChars: 300000 }, // Llama 3.3 70B gratuito
-      { id: 'google/gemini-3.1-flash-lite',           maxInputChars: 400000 }  // Gemini Lite
+      { id: 'cohere/north-mini-code:free',            maxInputChars: 500000 }, // 256K tokens, conservative 500K chars for free tier
+      { id: 'qwen/qwen3-coder:free',                  maxInputChars: 300000 }, // Free tier rate safety
+      { id: 'google/gemma-4-31b-it:free',             maxInputChars: 300000 }, // Free tier rate safety
+      { id: 'meta-llama/llama-3.3-70b-instruct:free', maxInputChars: 300000 }, // Free tier rate safety
+      { id: 'google/gemini-3.1-flash-lite',           maxInputChars: 400000 }  // Free tier rate safety
     ]
   },
   // ===========================================================================
@@ -91,28 +91,28 @@ const PROVIDERS = {
   samba: {
     keyName: 'SAMBA_API_KEY',
     models: [
-      { id: 'DeepSeek-V3.2',               maxInputChars: 128000 }, // top coding + reasoning
-      { id: 'gpt-oss-120b',                maxInputChars: 128000 }, // 120B open-source
-      { id: 'Meta-Llama-3.3-70B-Instruct', maxInputChars: 128000 }, // Llama 3.3 70B
-      { id: 'gemma-4-31B-it',              maxInputChars: 128000 }, // Gemma 4 31B
-      { id: 'MiniMax-M2.7',                maxInputChars: 128000 }  // MiniMax M2.7
+      { id: 'DeepSeek-V3.2',               maxInputChars: 500000 }, // 128K tokens typical (500K chars)
+      { id: 'gpt-oss-120b',                maxInputChars: 500000 }, // 128K tokens (500K chars)
+      { id: 'Meta-Llama-3.3-70B-Instruct', maxInputChars: 500000 }, // 128K tokens (500K chars)
+      { id: 'gemma-4-31B-it',              maxInputChars: 500000 }, // 128K tokens (500K chars)
+      { id: 'MiniMax-M2.7',                maxInputChars: 500000 }  // 128K tokens typical (500K chars)
     ]
   },
   cerebras: {
     keyName: 'CEREBRAS_API_KEY',
     // max_completion_tokens OBLIGATORIO en Cerebras para evitar rate-limit por token-bucketing
     models: [
-      { id: 'gpt-oss-120b', maxInputChars: 128000, max_completion_tokens: 2048 }, // ultra-rapido
-      { id: 'zai-glm-4.7',  maxInputChars: 128000, max_completion_tokens: 2048 }  // GLM-4.7
+      { id: 'gpt-oss-120b', maxInputChars: 500000, max_completion_tokens: 2048 }, // 128K tokens (500K chars)
+      { id: 'zai-glm-4.7',  maxInputChars: 500000, max_completion_tokens: 2048 }  // 131K tokens (500K chars)
     ]
   },
   github_models: {
     keyName: 'GH_MODELS_TOKEN',
     models: [
-      { id: 'gpt-4o',                       maxInputChars: 128000 }, // GPT-4o flagship
-      { id: 'Meta-Llama-3.1-405B-Instruct', maxInputChars:  28000 }, // Llama 405B (8k tokens limit)
-      { id: 'gpt-4o-mini',                  maxInputChars: 128000 }, // GPT-4o Mini (selector)
-      { id: 'Meta-Llama-3.1-8B-Instruct',  maxInputChars:  28000 }  // Llama 8B (selector) (8k tokens limit)
+      { id: 'gpt-4o',                       maxInputChars: 500000 }, // 128K tokens (500K chars)
+      { id: 'Meta-Llama-3.1-405B-Instruct', maxInputChars:  28000 }, // Llama 405B (strict 8k tokens free tier limit)
+      { id: 'gpt-4o-mini',                  maxInputChars: 500000 }, // 128K tokens (500K chars)
+      { id: 'Meta-Llama-3.1-8B-Instruct',  maxInputChars:  28000 }  // Llama 8B (strict 8k tokens free tier limit)
     ]
   }
 };

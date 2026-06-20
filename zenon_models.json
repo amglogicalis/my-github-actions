@@ -4,7 +4,7 @@
     "description": "Google Gemini 2.5 Flash — flagship, 1M context, best for large codebases.",
     "specialization": ["code", "reasoning", "general"],
     "providers": [
-      { "provider": "gemini", "api_model_id": "gemini-2.5-flash", "maxInputChars": 3000000, "tier": "large" }
+      { "provider": "gemini", "api_model_id": "gemini-2.5-flash", "maxInputChars": 4000000, "tier": "large" }
     ]
   },
   {
@@ -12,8 +12,8 @@
     "description": "Google Gemini Flash Lite — fast and efficient for medium codebases.",
     "specialization": ["code", "general"],
     "providers": [
-      { "provider": "gemini", "api_model_id": "gemini-flash-lite-latest", "maxInputChars": 1000000, "tier": "large" },
-      { "provider": "gemini", "api_model_id": "gemini-3.1-flash-lite", "maxInputChars": 1000000, "tier": "large" },
+      { "provider": "gemini", "api_model_id": "gemini-flash-lite-latest", "maxInputChars": 4000000, "tier": "large" },
+      { "provider": "gemini", "api_model_id": "gemini-3.1-flash-lite", "maxInputChars": 4000000, "tier": "large" },
       { "provider": "openrouter", "api_model_id": "google/gemini-3.1-flash-lite", "maxInputChars": 400000, "tier": "large" }
     ]
   },
@@ -22,8 +22,8 @@
     "description": "Google Gemma 4 31B — open-weight model, great for coding tasks.",
     "specialization": ["code", "general"],
     "providers": [
-      { "provider": "gemini", "api_model_id": "gemma-4-31b-it", "maxInputChars": 400000, "tier": "large" },
-      { "provider": "samba", "api_model_id": "gemma-4-31B-it", "maxInputChars": 128000, "tier": "medium" },
+      { "provider": "gemini", "api_model_id": "gemma-4-31b-it", "maxInputChars": 1000000, "tier": "large" },
+      { "provider": "samba", "api_model_id": "gemma-4-31B-it", "maxInputChars": 500000, "tier": "medium" },
       { "provider": "openrouter", "api_model_id": "google/gemma-4-31b-it:free", "maxInputChars": 300000, "tier": "medium" }
     ]
   },
@@ -32,8 +32,8 @@
     "description": "GPT-OSS 120B — massive open-source model, ultra-fast inference on Cerebras.",
     "specialization": ["code", "reasoning", "general"],
     "providers": [
-      { "provider": "samba", "api_model_id": "gpt-oss-120b", "maxInputChars": 128000, "tier": "medium" },
-      { "provider": "cerebras", "api_model_id": "gpt-oss-120b", "maxInputChars": 128000, "tier": "medium", "max_completion_tokens": 2048 }
+      { "provider": "samba", "api_model_id": "gpt-oss-120b", "maxInputChars": 500000, "tier": "medium" },
+      { "provider": "cerebras", "api_model_id": "gpt-oss-120b", "maxInputChars": 500000, "tier": "medium", "max_completion_tokens": 2048 }
     ]
   },
   {
@@ -41,7 +41,7 @@
     "description": "DeepSeek V3.2 — latest DeepSeek generation, superior coding and reasoning.",
     "specialization": ["code", "reasoning"],
     "providers": [
-      { "provider": "samba", "api_model_id": "DeepSeek-V3.2", "maxInputChars": 128000, "tier": "medium" }
+      { "provider": "samba", "api_model_id": "DeepSeek-V3.2", "maxInputChars": 500000, "tier": "medium" }
     ]
   },
   {
@@ -49,7 +49,7 @@
     "description": "DeepSeek V3.1 — strong coding and reasoning model.",
     "specialization": ["code", "reasoning"],
     "providers": [
-      { "provider": "samba", "api_model_id": "DeepSeek-V3-0324", "maxInputChars": 128000, "tier": "medium" }
+      { "provider": "samba", "api_model_id": "DeepSeek-V3-0324", "maxInputChars": 500000, "tier": "medium" }
     ]
   },
   {
@@ -57,7 +57,7 @@
     "description": "MiniMax M2.7 — efficient model for reasoning and general tasks.",
     "specialization": ["general", "reasoning"],
     "providers": [
-      { "provider": "samba", "api_model_id": "MiniMax-M2.7", "maxInputChars": 128000, "tier": "medium" }
+      { "provider": "samba", "api_model_id": "MiniMax-M2.7", "maxInputChars": 500000, "tier": "medium" }
     ]
   },
   {
@@ -65,7 +65,7 @@
     "description": "ZAI GLM-4.7 — fast inference model on Cerebras hardware.",
     "specialization": ["general"],
     "providers": [
-      { "provider": "cerebras", "api_model_id": "zai-glm-4.7", "maxInputChars": 128000, "tier": "medium", "max_completion_tokens": 2048 }
+      { "provider": "cerebras", "api_model_id": "zai-glm-4.7", "maxInputChars": 500000, "tier": "medium", "max_completion_tokens": 2048 }
     ]
   },
   {
@@ -73,7 +73,7 @@
     "description": "OpenAI GPT-4o — industry-leading model, excellent for complex code analysis.",
     "specialization": ["code", "reasoning", "general"],
     "providers": [
-      { "provider": "github_models", "api_model_id": "gpt-4o", "maxInputChars": 128000, "tier": "medium" }
+      { "provider": "github_models", "api_model_id": "gpt-4o", "maxInputChars": 500000, "tier": "medium" }
     ]
   },
   {
@@ -81,7 +81,7 @@
     "description": "OpenAI GPT-4o Mini — fast, cost-efficient, ideal for quick analysis and selector tasks.",
     "specialization": ["code", "general"],
     "providers": [
-      { "provider": "github_models", "api_model_id": "gpt-4o-mini", "maxInputChars": 128000, "tier": "medium" }
+      { "provider": "github_models", "api_model_id": "gpt-4o-mini", "maxInputChars": 500000, "tier": "medium" }
     ]
   },
   {
@@ -107,7 +107,7 @@
     "specialization": ["code", "general"],
     "providers": [
       { "provider": "groq", "api_model_id": "llama-3.3-70b-versatile", "maxInputChars": 28000, "tier": "small" },
-      { "provider": "samba", "api_model_id": "Meta-Llama-3.3-70B-Instruct", "maxInputChars": 128000, "tier": "medium" },
+      { "provider": "samba", "api_model_id": "Meta-Llama-3.3-70B-Instruct", "maxInputChars": 500000, "tier": "medium" },
       { "provider": "openrouter", "api_model_id": "meta-llama/llama-3.3-70b-instruct:free", "maxInputChars": 300000, "tier": "medium" }
     ]
   },
@@ -116,7 +116,7 @@
     "description": "Meta Llama 4 Scout 17B — multimodal MoE, fast and capable.",
     "specialization": ["code", "general"],
     "providers": [
-      { "provider": "groq", "api_model_id": "meta-llama/llama-4-scout-17b-16e-instruct", "maxInputChars": 60000, "tier": "medium" }
+      { "provider": "groq", "api_model_id": "meta-llama/llama-4-scout-17b-16e-instruct", "maxInputChars": 240000, "tier": "medium" }
     ]
   },
   {
@@ -132,7 +132,7 @@
     "description": "Qwen 3.6 27B — powerful reasoning model from Alibaba.",
     "specialization": ["code", "reasoning"],
     "providers": [
-      { "provider": "groq", "api_model_id": "qwen/qwen3.6-27b", "maxInputChars": 60000, "tier": "medium" }
+      { "provider": "groq", "api_model_id": "qwen/qwen3.6-27b", "maxInputChars": 240000, "tier": "medium" }
     ]
   },
   {
@@ -140,7 +140,7 @@
     "description": "Cohere Command A Plus — Cohere's best model for enterprise-grade analysis.",
     "specialization": ["general", "reasoning"],
     "providers": [
-      { "provider": "cohere", "api_model_id": "command-a-plus-05-2026", "maxInputChars": 200000, "tier": "large" }
+      { "provider": "cohere", "api_model_id": "command-a-plus-05-2026", "maxInputChars": 500000, "tier": "large" }
     ]
   },
   {
@@ -156,7 +156,7 @@
     "description": "Cohere Command A — capable and cost-efficient Cohere model.",
     "specialization": ["general"],
     "providers": [
-      { "provider": "cohere", "api_model_id": "command-a-03-2025", "maxInputChars": 200000, "tier": "large" }
+      { "provider": "cohere", "api_model_id": "command-a-03-2025", "maxInputChars": 1000000, "tier": "large" }
     ]
   },
   {
@@ -172,7 +172,7 @@
     "description": "Cohere North Mini Code — specialized for code review via OpenRouter.",
     "specialization": ["code"],
     "providers": [
-      { "provider": "openrouter", "api_model_id": "cohere/north-mini-code:free", "maxInputChars": 200000, "tier": "medium" }
+      { "provider": "openrouter", "api_model_id": "cohere/north-mini-code:free", "maxInputChars": 500000, "tier": "medium" }
     ]
   }
 ]

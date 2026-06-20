@@ -2692,6 +2692,7 @@ RULES:
       }
 
       // AI summary analysis of the entire run
+      let aiSummaryText = '';
       if (taskResults.length > 0) {
         console.log('\n🤖 Zenon DevOpser AI is generating the execution summary...');
         const summarySystemInstruction = `You are "Zenon DevOpser", a senior DevOps AI analyst.
@@ -2704,7 +2705,8 @@ Write in structured Markdown. Be direct and technical. Do not include greetings 
 
         try {
           const summaryResult = await callWithFallback(chain, 'assist', summarySystemInstruction, summaryUserPrompt);
-          reportMd += `## 🤖 AI Executive Summary\n\n${summaryResult.text}\n\n`;
+          aiSummaryText = summaryResult.text;
+          reportMd += `## 🤖 AI Executive Summary\n\n${aiSummaryText}\n\n`;
           console.log(`  ✅ AI summary generated using [${summaryResult.provider.toUpperCase()}] ${summaryResult.model}`);
         } catch (e) {
           console.warn(`  ⚠️  Could not generate AI summary: ${e.message}`);
@@ -2717,6 +2719,10 @@ Write in structured Markdown. Be direct and technical. Do not include greetings 
         .replace(/#### <img[^>]*> /g, '## ');
       fs.writeFileSync('zenon_report.md', cleanReport, 'utf8');
       console.log('\n📊 Report written to zenon_report.md');
+
+      const htmlReport = buildHtmlReport(taskResults, overallSuccess, statusLabel, totalDuration, successCount, failureCount, warningCount, skippedCount, selfHeal, aiSummaryText);
+      fs.writeFileSync('zenon_report.html', htmlReport, 'utf8');
+      console.log('📊 Premium HTML report written to zenon_report.html');
 
       if (isCI && process.env.GITHUB_STEP_SUMMARY) {
         fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, reportMd);
@@ -3571,6 +3577,263 @@ process.on('uncaughtException', (err) => {
   console.error(err.message);
   console.error(err.stack);
   process.exit(1);
-});
+});function mdToHtml(md) {
+  if (!md) return '';
+  const lines = md.split('\n');
+  let html = '';
+  let inList = false;
+  
+  for (let line of lines) {
+    let l = line.trim();
+    if (!l) {
+      if (inList) {
+        html += '</ul>';
+        inList = false;
+      }
+      continue;
+    }
+    
+    l = l
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#0f172a;">$1</strong>')
+      .replace(/`(.*?)`/g, '<code style="background-color:#f1f5f9; color:#0f172a; padding:2px 4px; border-radius:4px; font-family:Consolas, Monaco, monospace; font-size:13px;">$1</code>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
+      
+    if (l.startsWith('### ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h3 style="color:#1e293b; font-size:17px; font-weight:600; margin-top:20px; margin-bottom:10px;">\${l.substring(4)}</h3>`;
+    } else if (l.startsWith('## ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h2 style="color:#0f172a; font-size:20px; font-weight:700; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-top:25px; margin-bottom:15px;">\${l.substring(3)}</h2>`;
+    } else if (l.startsWith('# ')) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h1 style="color:#0f172a; font-size:24px; font-weight:800; margin-top:30px; margin-bottom:20px;">\${l.substring(2)}</h1>`;
+    } else if (l.startsWith('- ') || l.startsWith('* ')) {
+      if (!inList) {
+        html += '<ul style="padding-left:20px; margin-bottom:15px; margin-top:10px; list-style-type:disc;">';
+        inList = true;
+      }
+      html += `<li style="margin-bottom:8px; color:#475569; line-height:1.5; font-size:14px;">\${l.substring(2)}</li>`;
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<p style="margin-bottom:15px; color:#334155; line-height:1.6; font-size:14px;">\${l}</p>`;
+    }
+  }
+  
+  if (inList) {
+    html += '</ul>';
+  }
+  
+  return html;
+}
+
+function buildHtmlReport(taskResults, overallSuccess, statusLabel, totalDuration, successCount, failureCount, warningCount, skippedCount, selfHeal, aiSummary) {
+  const statusColor = overallSuccess ? '#10b981' : (failureCount > 0 ? '#ef4444' : '#f59e0b');
+  const statusBg = overallSuccess ? '#dcfce7' : (failureCount > 0 ? '#fee2e2' : '#fef3c7');
+  const statusBorder = overallSuccess ? '#bbf7d0' : (failureCount > 0 ? '#fecaca' : '#fde68a');
+  const statusEmoji = overallSuccess ? '✅' : (failureCount > 0 ? '❌' : '⚠️');
+  
+  const logoDevopsUrl = 'https://raw.githubusercontent.com/amglogicalis/Zenon/main/assets/logos/logo_zenon_DevOpser.png';
+
+  let tasksHtml = '';
+  for (const r of taskResults) {
+    const taskEmoji = r.status === 'success' ? '✅' : r.status === 'failure' ? '❌' : r.status === 'warning' ? '⚠️' : '⏭️';
+    const badgeColor = r.status === 'success' ? '#10b981' : r.status === 'failure' ? '#ef4444' : r.status === 'warning' ? '#f59e0b' : '#64748b';
+    const badgeBg = r.status === 'success' ? '#dcfce7' : r.status === 'failure' ? '#fee2e2' : r.status === 'warning' ? '#fef3c7' : '#f1f5f9';
+    
+    let outputLog = '';
+    if (r.output && r.output.trim()) {
+      // Escape HTML entities to prevent rendering issues in email clients
+      const escapedOutput = r.output.trim()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      outputLog = `
+        <div style="margin-top: 15px;">
+          <div style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 5px;">Output Log:</div>
+          <pre style="background-color: #0f172a; color: #f8fafc; padding: 15px; border-radius: 6px; font-family: Consolas, Monaco, monospace; font-size: 13px; line-height: 1.5; overflow-x: auto; margin: 0; white-space: pre-wrap; word-break: break-all;">\${escapedOutput}</pre>
+        </div>
+      `;
+    }
+    
+    tasksHtml += `
+      <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td valign="top">
+              <span style="font-size: 16px; font-weight: 700; color: #0f172a; margin-right: 8px;">\${taskEmoji} \${r.task.name}</span>
+              <code style="background-color: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px;">\${r.task.id}</code>
+            </td>
+            <td align="right" valign="top" style="width: 100px;">
+              <span style="display: inline-block; background-color: \${badgeBg}; color: \${badgeColor}; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">
+                \${r.status}
+              </span>
+            </td>
+          </tr>
+        </table>
+        <div style="font-size: 13px; color: #64748b; margin-top: 8px;">
+          \${r.scriptPath ? \`<strong>Script:</strong> <code style="font-family: monospace; font-size: 12px; color: #0f172a;">\${r.scriptPath}</code> &nbsp;|&nbsp;\` : ''}
+          <strong>Duration:</strong> \${(r.duration/1000).toFixed(1)}s
+        </div>
+        \${outputLog}
+      </div>
+    `;
+  }
+
+  const aiSummaryHtml = aiSummary ? `
+    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 15px;">
+        <tr>
+          <td style="width: 40px; valign: middle;">
+            <div style="font-size: 24px;">🤖</div>
+          </td>
+          <td valign="middle">
+            <h3 style="margin: 0; color: #166534; font-size: 16px; font-weight: 700;">AI Executive Summary</h3>
+          </td>
+        </tr>
+      </table>
+      <div style="font-size: 14px; color: #1e3a1e;">
+        \${mdToHtml(aiSummary)}
+      </div>
+    </div>
+  ` : '';
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Zenon DevOpser Execution Report</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; padding: 20px 10px;">
+        <tr>
+          <td align="center">
+            <table width="100%" max-width="650px" style="max-width: 650px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);" cellpadding="0" cellspacing="0" border="0">
+              
+              <!-- HEADER -->
+              <tr>
+                <td style="background-color: #0f172a; padding: 25px 30px; text-align: left;">
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="valign: middle;">
+                        <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; display: inline-block;">
+                          Zenon Polis
+                        </h1>
+                        <span style="display: inline-block; background-color: #c084fc; color: #3b0764; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; margin-left: 8px; text-transform: uppercase; vertical-align: middle;">
+                          DevOpser
+                        </span>
+                        <div style="margin-top: 5px; font-size: 13px; color: #94a3b8;">
+                          Autonomous DevOps Operator & Local Serverless Platform
+                        </div>
+                      </td>
+                      <td align="right" style="width: 50px; valign: middle;">
+                        <img src="${logoDevopsUrl}" alt="Zenon Logo" width="40" height="40" style="display: block; border-radius: 8px;" />
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              
+              <!-- MAIN CONTENT -->
+              <tr>
+                <td style="padding: 30px;">
+                  
+                  <!-- STATUS BANNER -->
+                  <div style="background-color: \${statusBg}; border: 1px solid \${statusBorder}; border-radius: 8px; padding: 15px 20px; margin-bottom: 25px; text-align: left;">
+                    <span style="font-size: 18px; font-weight: 800; color: #0f172a; display: block; margin-bottom: 4px;">
+                      \${statusEmoji} \${statusLabel}
+                    </span>
+                    <span style="font-size: 13px; color: #475569;">
+                      Executed <strong>\${taskResults.length}</strong> task(s) in <strong>\${(totalDuration/1000).toFixed(1)}s</strong>
+                    </span>
+                  </div>
+                  
+                  <!-- METRICS GRID -->
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 30px;">
+                    <tr>
+                      <td width="48%" valign="top">
+                        <table width="100%" cellpadding="10" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                          <tr>
+                            <td>
+                              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Pipeline Run</div>
+                              <table width="100%" cellpadding="0" cellspacing="2" border="0" style="margin-top: 8px; font-size: 13px;">
+                                <tr>
+                                  <td style="color: #64748b;">✅ Succeeded:</td>
+                                  <td align="right" style="font-weight: 700; color: #166534;">\${successCount}</td>
+                                </tr>
+                                <tr>
+                                  <td style="color: #64748b;">❌ Failed:</td>
+                                  <td align="right" style="font-weight: 700; color: #991b1b;">\${failureCount}</td>
+                                </tr>
+                                <tr>
+                                  <td style="color: #64748b;">⚠️ Warnings:</td>
+                                  <td align="right" style="font-weight: 700; color: #854d0e;">\${warningCount}</td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                      <td width="4%"></td>
+                      <td width="48%" valign="top">
+                        <table width="100%" cellpadding="10" cellspacing="0" border="0" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                          <tr>
+                            <td>
+                              <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">System Details</div>
+                              <table width="100%" cellpadding="0" cellspacing="2" border="0" style="margin-top: 8px; font-size: 13px;">
+                                <tr>
+                                  <td style="color: #64748b;">Self-Heal:</td>
+                                  <td align="right" style="font-weight: 700; color: #0f172a;">\${selfHeal ? 'Enabled' : 'Disabled'}</td>
+                                </tr>
+                                <tr>
+                                  <td style="color: #64748b;">Duration:</td>
+                                  <td align="right" style="font-weight: 700; color: #0f172a;">\${(totalDuration/1000).toFixed(1)}s</td>
+                                </tr>
+                                <tr>
+                                  <td style="color: #64748b;">Skipped:</td>
+                                  <td align="right" style="font-weight: 700; color: #0f172a;">\${skippedCount}</td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                  
+                  <!-- AI EXECUTIVE SUMMARY -->
+                  \${aiSummaryHtml}
+                  
+                  <!-- TASK RESULTS HEADER -->
+                  <h2 style="color: #0f172a; font-size: 18px; font-weight: 800; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 0; margin-bottom: 20px;">
+                    Task Results Details
+                  </h2>
+                  
+                  <!-- LIST OF TASKS -->
+                  \${tasksHtml}
+                  
+                </td>
+              </tr>
+              
+              <!-- FOOTER -->
+              <tr>
+                <td style="background-color: #f1f5f9; padding: 20px 30px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
+                  Sent autonomously by <strong>Zenon DevOpser</strong> • \${new Date().toUTCString()}
+                </td>
+              </tr>
+              
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
 
 main();

@@ -75,6 +75,7 @@ jobs:
           name: zenon-devopser-report
           path: |
             zenon_report.md
+            zenon_report.html
             .zenon_devops/tasks/
           if-no-files-found: ignore
           retention-days: 30
@@ -92,5 +93,4 @@ jobs:
           subject: "⚡ Zenon DevOpser Report — ${{ github.repository }}"
           to: ${{ inputs.notify-email }}
           from: Zenon DevOpser
-          body: file://zenon_report.md
-          convert_markdown: true
+          html_body: file://zenon_report.html

@@ -1,4 +1,4 @@
-﻿# =============================================================================
+# =============================================================================
 # Zenon Polis — Setup Helper (Windows / PowerShell)
 # =============================================================================
 # Este script te ayuda a importar de forma rápida y sencilla los módulos de
@@ -101,6 +101,7 @@ if ($UseMultiProvider) {
           samba-api-key: ${{ secrets.SAMBA_API_KEY }}
           cerebras-api-key: ${{ secrets.CEREBRAS_API_KEY }}
           gh-models-token: ${{ secrets.GH_MODELS_TOKEN }}
+          tenzor-api-key: ${{ secrets.TENZOR_API_KEY }}
 '@
 } else {
     $KeysYaml = '          zenon-api-key: ${{ secrets.ZENON_API_KEY }}'
@@ -469,7 +470,7 @@ Write-Host "   - ZENON_API_KEY (Clave de Google Gemini)" -ForegroundColor Magent
 
 if ($UseMultiProvider) {
     Write-Host "2. Añade las claves secundarias para habilitar la cascada de fallbacks (Opcional):"
-    Write-Host "   - GROQ_API_KEY, SAMBA_API_KEY, COHERE_API_KEY, CEREBRAS_API_KEY, GH_MODELS_TOKEN" -ForegroundColor Magenta
+    Write-Host "   - GROQ_API_KEY, SAMBA_API_KEY, COHERE_API_KEY, CEREBRAS_API_KEY, GH_MODELS_TOKEN, TENZOR_API_KEY" -ForegroundColor Magenta
 }
 
 if ($SelectedOptions -contains 2) {

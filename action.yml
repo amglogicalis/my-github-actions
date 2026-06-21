@@ -43,7 +43,7 @@ inputs:
     required: false
     default: ''
   tenzor-base-url:
-    description: 'Tenzor AI base URL (optional - defaults to https://tenzor.onrender.com/v1)'
+    description: 'Tenzor AI base URL (optional - defaults to https://tenzor-web.onrender.com/v1)'
     required: false
     default: ''
   mode:

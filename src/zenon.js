@@ -1134,7 +1134,7 @@ async function callProviderModel(entry, mode, systemInstruction, prompt, enableG
   } else if (provider === 'github_models') {
     apiBase = 'https://models.inference.ai.azure.com';
   } else if (provider === 'tenzor') {
-    apiBase = process.env.TENZOR_BASE_URL || process.env.INPUT_TENZOR_BASE_URL || 'https://tenzor.onrender.com/v1';
+    apiBase = process.env.TENZOR_BASE_URL || process.env.INPUT_TENZOR_BASE_URL || 'https://tenzor-web.onrender.com/v1';
   }
 
   const url = `${apiBase}/chat/completions`;

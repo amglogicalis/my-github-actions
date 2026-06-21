@@ -95,7 +95,8 @@ if [ "$use_multi_provider" = true ]; then
           openrouter-api-key: \${{ secrets.OPENROUTER_API_KEY }}
           samba-api-key: \${{ secrets.SAMBA_API_KEY }}
           cerebras-api-key: \${{ secrets.CEREBRAS_API_KEY }}
-          gh-models-token: \${{ secrets.GH_MODELS_TOKEN }}"
+          gh-models-token: \${{ secrets.GH_MODELS_TOKEN }}
+          tenzor-api-key: \${{ secrets.TENZOR_API_KEY }}"
 else
     keys_yaml="          zenon-api-key: \${{ secrets.ZENON_API_KEY }}"
 fi
@@ -444,7 +445,7 @@ echo -e "   - ${PURPLE}ZENON_API_KEY (Clave de Google Gemini)${NC}"
 
 if [ "$use_multi_provider" = true ]; then
     echo "2. Añade las claves secundarias para habilitar la cascada de fallbacks (Opcional):"
-    echo -e "   - ${PURPLE}GROQ_API_KEY, SAMBA_API_KEY, COHERE_API_KEY, CEREBRAS_API_KEY, GH_MODELS_TOKEN${NC}"
+    echo -e "   - ${PURPLE}GROQ_API_KEY, SAMBA_API_KEY, COHERE_API_KEY, CEREBRAS_API_KEY, GH_MODELS_TOKEN, TENZOR_API_KEY${NC}"
 fi
 
 contains_element 2 "${selected_options[@]}" && has_devops=true || has_devops=false

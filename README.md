@@ -427,6 +427,9 @@ SAMBA_API_KEY=...
 # Cerebras API Key (Opcional)
 CEREBRAS_API_KEY=csk-...
 
+# Tenzor AI API Key (Opcional)
+TENZOR_API_KEY=tenzor-...
+
 # GitHub Models Personal Access Token (Opcional)
 GH_MODELS_TOKEN=ghp_...
 # Token alternativo para GitHub Models
@@ -447,6 +450,8 @@ TOKEN_GH=ghp_...
 | `cerebras-api-key`  | API Key para Cerebras (Opcional). | No | — |
 | `gh-models-token`   | Token personal para GitHub Models (GH_MODELS_TOKEN) (Opcional). | No | — |
 | `token-gh` | Token alternativo (secret: TOKEN_GH) para GitHub Models. | No | — |
+| `tenzor-api-key` | API Key para Tenzor AI (Opcional). | No | — |
+| `tenzor-base-url` | URL base personalizada para la API de Tenzor (Opcional). | No | `https://tenzor-web.onrender.com/v1` |
 | `mode` | Modo de ejecución: `assist`, `correct`, `objective`, `trainer`, `reviewer`, `analyzer`, `helper`, `updater`, `tester` o `devops`. | No | `assist` |
 | `objective-file` | Ruta al archivo Markdown que contiene las metas de `objective`. | No | `zenon_objective.md` |
 | `objective` | Texto directo con el objetivo (tiene precedencia sobre `objective-file`). | No | — |

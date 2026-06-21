@@ -611,12 +611,15 @@ function parseArgs() {
 
 // Helper to update cumulative token usage and call statistics in .zenon_cache.json
 function updateUsageStats(provider, model, mode, promptTokens, completionTokens) {
-  if (!fs.existsSync(CACHE_FILE)) return;
   try {
     let cacheData = { fingerprint: '', knowledge: '', updatedAt: '' };
-    try {
-      cacheData = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
-    } catch (e) {}
+    if (fs.existsSync(CACHE_FILE)) {
+      try {
+        cacheData = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+      } catch (e) {}
+    } else {
+      ensureGitignore();
+    }
 
     if (!cacheData.usageStats) {
       cacheData.usageStats = {
